@@ -86,7 +86,7 @@ namespace CustomVision
         private int cameraFacing;
         public static TextureView textureView;
         private static readonly string FOLDER_NAME = "/CustomVision";
-        private static int PREFIX = 1;
+        public static int PREFIX = 1;
         private static int IMAGE_FOLDER_COUNT = 1;
         private static readonly ImageClassifier imageClassifier = new ImageClassifier();
         public static int CAMERA_REQUEST = 0;
@@ -253,7 +253,6 @@ namespace CustomVision
         private static void SaveBitmap(string label, byte[] data) {
             DateTime currentDate = DateTime.Now;
             long ts = currentDate.Ticks;
-            SaveLog(label, currentDate, PREFIX);
             string sdcardPath = Android.OS.Environment.ExternalStorageDirectory.Path+FOLDER_NAME+"/"+IMAGE_FOLDER_COUNT;
             string fileName = PREFIX + ".  " + currentDate.TimeOfDay + "_" + label + ".png";
             string FilePath = System.IO.Path.Combine(sdcardPath, fileName);
@@ -266,7 +265,7 @@ namespace CustomVision
             PREFIX = PREFIX + 1;
         }
 
-        private static void SaveLog(string label, DateTime currentTime, int prefix)
+        public static void SaveLog(string label, DateTime currentTime, int prefix)
         {
             string msg = prefix + ".  " + currentTime.TimeOfDay + "_" + label;
             string sdCardPath = Android.OS.Environment.ExternalStorageDirectory.Path+FOLDER_NAME+"/"+IMAGE_FOLDER_COUNT;

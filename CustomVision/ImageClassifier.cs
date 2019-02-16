@@ -43,7 +43,23 @@ namespace CustomVision
             {
                 results.Add(Tuple.Create(outputs[i], labels[i]));
             }
-            return results.OrderByDescending(t => t.Item1).First().Item2;
+            IOrderedEnumerable<Tuple<float, string>> orderedResults = 
+                results.OrderByDescending(t => t.Item1);
+            string orderedResultsMsg = "";
+            for (int i = 0; i < orderedResults.Count(); i++)
+            {
+                orderedResultsMsg += orderedResults.ElementAt(i).Item2 + ": " 
+                    + orderedResults.ElementAt(i).Item1 + "; ";
+            }
+            MainActivity.SaveLog(orderedResultsMsg, DateTime.Now, MainActivity.PREFIX);
+            if (orderedResults.First().Item1 > .8)
+            {
+                return orderedResults.First().Item2;
+            } else
+            {
+                return "unknown";
+            }
+            
         }
 
         private static float[] GetBitmapPixels(Bitmap bitmap)
