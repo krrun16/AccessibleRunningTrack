@@ -86,7 +86,6 @@ namespace CustomVision
         private int cameraFacing;
         public static TextureView textureView;
         private static readonly string FOLDER_NAME = "/CustomVision";
-        public static int PREFIX = 1;
         private static int IMAGE_FOLDER_COUNT = 1;
         private static readonly ImageClassifier imageClassifier = new ImageClassifier();
         public static int CAMERA_REQUEST = 0;
@@ -244,25 +243,26 @@ namespace CustomVision
         {
         }
 
-        public static async void RecognizeImage(Bitmap rgbBitmap, byte[] data)
+        public static void RecognizeImage(Bitmap rgbBitmap, byte[] data, int prefix)
         {
-            string result = await Task.Run(() => imageClassifier.RecognizeImage(rgbBitmap));
-            SaveBitmap(result, data);
+            //string result = await Task.Run(() => imageClassifier.RecognizeImage(rgbBitmap));
+            string result = imageClassifier.RecognizeImage(rgbBitmap, prefix);
+            SaveLog("recognized image", DateTime.Now, prefix);
+            SaveBitmap(result, data, prefix);
         }
 
-        private static void SaveBitmap(string label, byte[] data) {
+        private static void SaveBitmap(string label, byte[] data, int prefix) {
             DateTime currentDate = DateTime.Now;
             long ts = currentDate.Ticks;
             string sdcardPath = Android.OS.Environment.ExternalStorageDirectory.Path+FOLDER_NAME+"/"+IMAGE_FOLDER_COUNT;
-            string fileName = PREFIX + ".  " + currentDate.TimeOfDay + "_" + label + ".png";
+            string fileName = prefix + ".  " + currentDate.TimeOfDay + "_" + label + ".png";
             string FilePath = System.IO.Path.Combine(sdcardPath, fileName);
 
             if (!File.Exists(FilePath))
             {
                 File.WriteAllBytes(FilePath, data);
+                SaveLog("saved image", DateTime.Now, prefix);
             }
-
-            PREFIX = PREFIX + 1;
         }
 
         public static void SaveLog(string label, DateTime currentTime, int prefix)
@@ -331,10 +331,13 @@ namespace CustomVision
 
     internal class ImageAvailableListener : Java.Lang.Object, ImageReader.IOnImageAvailableListener
     {
+        private int PREFIX = 0;
         public void OnImageAvailable(ImageReader reader)
         {
             if (1 == Interlocked.CompareExchange(ref MainActivity.canProcessImage, 0, 1))
             {
+                int prefix = Interlocked.Increment(ref PREFIX);
+                MainActivity.SaveLog("can process image", DateTime.Now, prefix);
                 Image image = reader.AcquireNextImage();
                 // Process the image
                 if (image == null)
@@ -345,12 +348,14 @@ namespace CustomVision
                 int width = MainActivity.textureView.Width;
                 int height = MainActivity.textureView.Height;
                 Bitmap bitmap = MainActivity.textureView.GetBitmap(width, height);
+                MainActivity.SaveLog("created bitmap", DateTime.Now, prefix);
                 image.Close();
                 MemoryStream byteArrayOutputStream = new MemoryStream();
                 Bitmap cropped = Bitmap.CreateBitmap(bitmap, 0, 0, width, height);
                 cropped.Compress(Bitmap.CompressFormat.Png, 100, byteArrayOutputStream);
+                MainActivity.SaveLog("created png", DateTime.Now, prefix);
                 byte[] png = byteArrayOutputStream.ToArray();
-                MainActivity.RecognizeImage(bitmap, png);
+                MainActivity.RecognizeImage(bitmap, png, prefix);
                 Interlocked.Exchange(ref MainActivity.canProcessImage, 1);
             }
         }

@@ -28,7 +28,7 @@ namespace CustomVision
             }
         }
 
-        public string RecognizeImage(Bitmap bitmap)
+        public string RecognizeImage(Bitmap bitmap, int prefix)
         {
             string[] outputNames = new[] { OutputName };
             float[] floatValues = GetBitmapPixels(bitmap);
@@ -51,7 +51,7 @@ namespace CustomVision
                 orderedResultsMsg += orderedResults.ElementAt(i).Item2 + ": " 
                     + orderedResults.ElementAt(i).Item1 + "; ";
             }
-            MainActivity.SaveLog(orderedResultsMsg, DateTime.Now, MainActivity.PREFIX);
+            MainActivity.SaveLog(orderedResultsMsg, DateTime.Now, prefix);
             if (orderedResults.First().Item1 > .8)
             {
                 return orderedResults.First().Item2;
