@@ -16,8 +16,12 @@ using Android.Media;
 using System.Threading;
 using System.Collections.Concurrent;
 
-namespace CustomVision
+namespace CustomVision //name of our app
 {
+    /* We never call this code explictly
+     * triggered based on the state of the camera
+     * This code waits for something to happen to the camera
+     */
     internal class StateCallback : CameraDevice.StateCallback
     {
 
@@ -25,6 +29,9 @@ namespace CustomVision
         {
         }
 
+        // When the camera opens, set a global variable "cameraDevice"
+        // For example, I set that it is the "back camera"
+        // Then, it creates a "preview session," which means that the camera streams to the phone screen
         public override void OnOpened(CameraDevice camera)
         {
             MainActivity.cameraDevice = camera;
@@ -34,12 +41,18 @@ namespace CustomVision
             }
         }
 
+        // Without bugs, this should not get called
+        // When the camera disconnects from the app
+        // We close the camera, and we unset that variable
         public override void OnDisconnected(CameraDevice camera)
         {
             camera.Close();
             MainActivity.cameraDevice = null;
         }
 
+        // Without bugs, this should not get called
+        // If the camera experiences an error
+        // We close the camera, and we unset that variable
         public override void OnError(CameraDevice camera, CameraError error)
         {
             camera.Close();
@@ -47,12 +60,19 @@ namespace CustomVision
         }
     }
 
+    /* We do not explictly call this code
+     * This is called when something happens to the camera in preparation to "capture"
+     */
     internal class CameraCaptureStateCallback : CameraCaptureSession.StateCallback
     {
         private CaptureRequest captureRequest;
 
+        // We do not call this method explictly
+        // When the camera has been configured (from createpreview method)
+        // It will create a "capture request" to capture anything the camera sees
         public override void OnConfigured(CameraCaptureSession session)
         {
+            // if the camera is null (note this shouldn't happen)
             if (MainActivity.cameraDevice == null)
             {
                 return;
@@ -60,11 +80,11 @@ namespace CustomVision
 
             try
             {
-                captureRequest = MainActivity.captureRequestBuilder.Build();
-                MainActivity.cameraCaptureSession = session;
+                captureRequest = MainActivity.captureRequestBuilder.Build(); // you have to create a capture request in order to get photos
+                MainActivity.cameraCaptureSession = session; // variable with the current camera capture "session"
                 MainActivity.cameraCaptureSession.SetRepeatingRequest(captureRequest,
-                        null, MainActivity.backgroundHandler);
-                Interlocked.Exchange(ref MainActivity.canProcessImage, 1);
+                        null, MainActivity.backgroundHandler); // run the session infinitely long
+                Interlocked.Exchange(ref MainActivity.canProcessImage, 1); // go ahead and classify images, equivalent canProcessImage = 1;
             }
             catch (CameraAccessException e)
             {
@@ -72,6 +92,8 @@ namespace CustomVision
             }
         }
 
+        // If configuration fails, close the session
+        // If there is no bugs, this shouldn't happen
         public override void OnConfigureFailed(CameraCaptureSession session)
         {
             session.Close();
@@ -399,34 +421,40 @@ namespace CustomVision
         }
     }
 
+    /* We don't explicitly call this code
+     * Any time there is an image available on the screen, we could classify the image
+     */
     internal class ImageAvailableListener : Java.Lang.Object, ImageReader.IOnImageAvailableListener
     {
         private int PREFIX = 0;
+
+        // We don't explicitly call this code
+        // If there is a picture available...
         public void OnImageAvailable(ImageReader reader)
         {
-            if (1 == Interlocked.CompareExchange(ref MainActivity.canProcessImage, 0, 1))
+            if (1 == Interlocked.CompareExchange(ref MainActivity.canProcessImage, 0, 1)) // if canProcessImage = 1 -> set canProcessImage = 0 immediately and return 1
+                // if canProcessImage = 0, so it isn't equal to the third parameter, the method returns 0.
             {
-                if (!MainActivity.bc.IsAddingCompleted)
+                if (!MainActivity.bc.IsAddingCompleted) // **TODO
                 {
-                    int prefix = Interlocked.Increment(ref PREFIX);
-                    MainActivity.SaveLog("can process image", DateTime.Now, prefix);
-                    Image image = reader.AcquireNextImage();
+                    int prefix = Interlocked.Increment(ref PREFIX); // thread safe way to create the number that is attached to the photo and the log file
+                    // equivalent to prefix = prefix + 1;
+                    MainActivity.SaveLog("can process image", DateTime.Now, prefix); // write when the photo can be processed to the log
+                    Image image = reader.AcquireNextImage(); // get the next picture from my screen
                     // Process the image
-                    if (image == null)
+                    if (image == null) // this shouldn't happen, but if it does returns to avoid further issues
                     {
                         return;
                     }
-
-                    int width = MainActivity.textureView.Width;
-                    int height = MainActivity.textureView.Height;
-                    Bitmap bitmap = MainActivity.textureView.GetBitmap(width, height);
-                    MainActivity.SaveLog("created bitmap", DateTime.Now, prefix);
-                    image.Close();
-                    BitmapPrefix bitmapPrefix = new BitmapPrefix(bitmap, prefix);
-                    MainActivity.bc.Add(bitmapPrefix);
-                    MainActivity.RecognizeImage(bitmap, prefix);
+                    //textureview is the region of the screen that contains the camera, so get the picture with the same dimensions as the screen
+                    Bitmap bitmap = MainActivity.textureView.GetBitmap(MainActivity.textureView.Width, MainActivity.textureView.Height);
+                    MainActivity.SaveLog("created bitmap", DateTime.Now, prefix); // write when the bitmap is created to the log
+                    image.Close(); // This closes the image so the phone no longer has to hold onto it, otherwise it will slow the system and stop collecting pictures
+                    BitmapPrefix bitmapPrefix = new BitmapPrefix(bitmap, prefix); // **TODO
+                    MainActivity.bc.Add(bitmapPrefix); // **TODO
+                    MainActivity.RecognizeImage(bitmap, prefix); // call the classifier to recognize the image
                 }
-                Interlocked.Exchange(ref MainActivity.canProcessImage, 1);
+                Interlocked.Exchange(ref MainActivity.canProcessImage, 1); // equivalent to canProcessImage = 1; meaning anyone else can come with their image
             }
         }
     }

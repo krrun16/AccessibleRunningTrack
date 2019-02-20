@@ -8,6 +8,8 @@ using Org.Tensorflow.Contrib.Android;
 
 namespace CustomVision
 {
+    /* This is where the image classification occurs
+     */
     public class ImageClassifier
     {
         private readonly List<string> labels;
