@@ -109,6 +109,7 @@ namespace CustomVision //name of our app
         private static int IMAGE_FOLDER_COUNT = 1;
         private static readonly ImageClassifier imageClassifier = new ImageClassifier();
         public static int CAMERA_REQUEST = 0;
+        public static int WRITE_EXTERNAL_STORAGE_REQUEST = 1;
         public static Size previewSize;
         public static ImageReader imageReader;
         internal static CameraDevice cameraDevice;
@@ -129,6 +130,7 @@ namespace CustomVision //name of our app
         {
             base.OnCreate(savedInstanceState);
             ActivityCompat.RequestPermissions(this, new string[] { Manifest.Permission.Camera }, CAMERA_REQUEST);
+            ActivityCompat.RequestPermissions(this, new string[] { Manifest.Permission.WriteExternalStorage }, WRITE_EXTERNAL_STORAGE_REQUEST);
             cameraFacing = (int)LensFacing.Back;
             textureView = new TextureView(this);
             SetContentView(textureView);
@@ -145,7 +147,11 @@ namespace CustomVision //name of our app
             }
             if (!Directory.Exists(sdcardPath))
             {
-                Directory.CreateDirectory(sdcardPath);
+                if (Android.Support.V4.Content.ContextCompat.CheckSelfPermission(this, Manifest.Permission.WriteExternalStorage)
+                        == Permission.Granted)
+                {
+                    Directory.CreateDirectory(sdcardPath);
+                }
             }
 
         }
