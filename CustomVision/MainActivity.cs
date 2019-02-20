@@ -14,6 +14,7 @@ using Android.Graphics;
 using System.Collections.Generic;
 using Android.Media;
 using System.Threading;
+using System.Collections.Concurrent;
 
 namespace CustomVision
 {
@@ -39,7 +40,7 @@ namespace CustomVision
             MainActivity.cameraDevice = null;
         }
 
-        public override void OnError(CameraDevice camera, Android.Hardware.Camera2.CameraError error)
+        public override void OnError(CameraDevice camera, CameraError error)
         {
             camera.Close();
             MainActivity.cameraDevice = null;
@@ -80,9 +81,6 @@ namespace CustomVision
     [Activity(Label = "@string/app_name", MainLauncher = false, Icon = "@mipmap/icon", Theme = "@style/MyTheme", ScreenOrientation = ScreenOrientation.Portrait)]
     public class MainActivity : AppCompatActivity, TextureView.ISurfaceTextureListener
     {
-        private CameraDevice.StateCallback stateCallback;
-        public static CameraCaptureSession.StateCallback cameraCaptureStateCallback;
-        private CameraManager cameraManager;
         private int cameraFacing;
         public static TextureView textureView;
         private static readonly string FOLDER_NAME = "/CustomVision";
@@ -100,14 +98,15 @@ namespace CustomVision
         private int DSI_height;
         private int DSI_width;
         public static int canProcessImage = 0;
+        public static BlockingCollection<BitmapPrefix> bc = new BlockingCollection<BitmapPrefix>();
+        private static Task task;
+        private static Task task2;
+        private static readonly object locker = new object();
 
         protected override void OnCreate(Bundle savedInstanceState)
         {
             base.OnCreate(savedInstanceState);
-            stateCallback = new StateCallback();
-            cameraCaptureStateCallback = new CameraCaptureStateCallback();
             ActivityCompat.RequestPermissions(this, new string[] { Manifest.Permission.Camera }, CAMERA_REQUEST);
-            cameraManager = (CameraManager)GetSystemService(CameraService);
             cameraFacing = (int)LensFacing.Back;
             textureView = new TextureView(this);
             SetContentView(textureView);
@@ -132,15 +131,59 @@ namespace CustomVision
         protected override void OnResume()
         {
             base.OnResume();
+            
             OpenBackgroundThread();
             if(textureView.IsAvailable)
             {
-                SetUpCamera();
-                OpenCamera();
+                if (cameraDevice == null)
+                {
+                    CameraManager cameraManager = (CameraManager)GetSystemService(CameraService);
+                    SetUpCamera(cameraManager);
+                    OpenCamera(cameraManager);
+                }
             } else
             {
                 textureView.SurfaceTextureListener = this;
             }
+        }
+
+        public static void BC_SaveImages()
+        {
+            Action action = () =>
+            {
+                try
+                {
+                    while (true)
+                    {
+                        BitmapPrefix bitmapPrefix = bc.Take();
+                        MemoryStream byteArrayOutputStream = new MemoryStream();
+                        Bitmap cropped = Bitmap.CreateBitmap(bitmapPrefix.Bitmap, 0, 0,
+                            textureView.Width, textureView.Height);
+                        cropped.Compress(Bitmap.CompressFormat.Png, 100,
+                            byteArrayOutputStream);
+                        SaveLog("created png", DateTime.Now, bitmapPrefix.Prefix);
+                        byte[] png = byteArrayOutputStream.ToArray();
+                        SaveBitmap(png, bitmapPrefix.Prefix);
+                    }
+                }
+                catch (InvalidOperationException)
+                {
+
+                }
+
+            };
+
+            task = Task.Factory.StartNew(action);
+            task2 = Task.Factory.StartNew(action);
+        }
+
+        protected override void OnDestroy()
+        {
+            base.OnDestroy();
+            CloseCamera();
+            CloseBackgroundThread();
+            FinishAffinity();
+            System.Environment.Exit(0);
         }
 
         protected override void OnStop()
@@ -148,10 +191,15 @@ namespace CustomVision
             base.OnStop();
             CloseCamera();
             CloseBackgroundThread();
+            FinishAffinity();
+            System.Environment.Exit(0);
         }
 
         private void CloseCamera()
         {
+            bc.CompleteAdding();
+            task.Wait();
+            task2.Wait();
             if (cameraCaptureSession != null)
             {
                 cameraCaptureSession.Close();
@@ -169,15 +217,18 @@ namespace CustomVision
         {
             try
             {
+                BC_SaveImages();
                 SurfaceTexture surfaceTexture = textureView.SurfaceTexture;
                 surfaceTexture.SetDefaultBufferSize(previewSize.Width, previewSize.Height);
                 Surface previewSurface = new Surface(surfaceTexture);
                 captureRequestBuilder = cameraDevice.CreateCaptureRequest(CameraTemplate.Preview);
                 captureRequestBuilder.AddTarget(previewSurface);
                 captureRequestBuilder.AddTarget(imageReader.Surface);
-                cameraDevice.CreateCaptureSession(new List<Surface>() { previewSurface, imageReader.Surface }, 
-                    cameraCaptureStateCallback, backgroundHandler);
-            } catch (CameraAccessException e) {
+                cameraDevice.CreateCaptureSession(new List<Surface>() { previewSurface, imageReader.Surface },
+                    new CameraCaptureStateCallback(), backgroundHandler);
+            }
+            catch (CameraAccessException e)
+            {
                 e.PrintStackTrace();
             }
         }
@@ -225,8 +276,11 @@ namespace CustomVision
 
         public void OnSurfaceTextureAvailable(SurfaceTexture surface, int w, int h)
         {
-            SetUpCamera();
-            OpenCamera();
+            if (cameraDevice == null)
+            {
+                SetUpCamera((CameraManager)GetSystemService(CameraService));
+                OpenCamera((CameraManager)GetSystemService(CameraService));
+            }
         }
 
         public bool OnSurfaceTextureDestroyed(SurfaceTexture surface)
@@ -243,19 +297,18 @@ namespace CustomVision
         {
         }
 
-        public static void RecognizeImage(Bitmap rgbBitmap, byte[] data, int prefix)
+        public static void RecognizeImage(Bitmap rgbBitmap, int prefix)
         {
             //string result = await Task.Run(() => imageClassifier.RecognizeImage(rgbBitmap));
             string result = imageClassifier.RecognizeImage(rgbBitmap, prefix);
             SaveLog("recognized image", DateTime.Now, prefix);
-            SaveBitmap(result, data, prefix);
         }
 
-        private static void SaveBitmap(string label, byte[] data, int prefix) {
+        private static void SaveBitmap(byte[] data, int prefix) {
             DateTime currentDate = DateTime.Now;
             long ts = currentDate.Ticks;
             string sdcardPath = Android.OS.Environment.ExternalStorageDirectory.Path+FOLDER_NAME+"/"+IMAGE_FOLDER_COUNT;
-            string fileName = prefix + ".  " + currentDate.TimeOfDay + "_" + label + ".png";
+            string fileName = prefix + ".  " + currentDate.TimeOfDay + ".png";
             string FilePath = System.IO.Path.Combine(sdcardPath, fileName);
 
             if (!File.Exists(FilePath))
@@ -268,26 +321,29 @@ namespace CustomVision
         public static void SaveLog(string label, DateTime currentTime, int prefix)
         {
             string msg = prefix + ".  " + currentTime.TimeOfDay + "_" + label;
-            string sdCardPath = Android.OS.Environment.ExternalStorageDirectory.Path+FOLDER_NAME+"/"+IMAGE_FOLDER_COUNT;
+            string sdCardPath = Android.OS.Environment.ExternalStorageDirectory.Path + FOLDER_NAME + "/" + IMAGE_FOLDER_COUNT;
             string filePath = System.IO.Path.Combine(sdCardPath, "log.txt");
-            if (!File.Exists(filePath))
+            lock (locker)
             {
-                using (StreamWriter write = new StreamWriter(filePath, true))
+                if (!File.Exists(filePath))
                 {
-                    write.Write(msg+"\n");
-                }
+                    using (StreamWriter write = new StreamWriter(filePath, true))
+                    {
+                        write.Write(msg + "\n");
+                    }
 
-            } else
-            {
-                using (StreamWriter write = new StreamWriter(filePath, true))
+                }
+                else
                 {
-                    write.Write(msg + "\n");
+                    using (StreamWriter write = new StreamWriter(filePath, true))
+                    {
+                        write.Write(msg + "\n");
+                    }
                 }
             }
-            
         }
 
-        private void SetUpCamera()
+        private void SetUpCamera(CameraManager cameraManager)
         {
             try {
                 foreach (string cameraId in cameraManager.GetCameraIdList()) {
@@ -312,20 +368,34 @@ namespace CustomVision
             }
         }
 
-        private void OpenCamera()
+        private void OpenCamera(CameraManager cameraManager)
         {
             try
             {
                 if (Android.Support.V4.Content.ContextCompat.CheckSelfPermission(this, Manifest.Permission.Camera)
                         == Permission.Granted)
                 {
-                    cameraManager.OpenCamera(CameraId, stateCallback, backgroundHandler);
+                    cameraManager.OpenCamera(CameraId, new StateCallback(), backgroundHandler);
                 }
             }
             catch (CameraAccessException e)
             {
                 e.PrintStackTrace();
             }
+        }
+    }
+
+    public class BitmapPrefix
+    {
+        public Bitmap Bitmap { get; set; }
+        public int Prefix { get; set; }
+
+        public BitmapPrefix() { }
+
+        public BitmapPrefix(Bitmap bitmap, int prefix)
+        {
+            Bitmap = bitmap;
+            Prefix = prefix;
         }
     }
 
@@ -336,26 +406,26 @@ namespace CustomVision
         {
             if (1 == Interlocked.CompareExchange(ref MainActivity.canProcessImage, 0, 1))
             {
-                int prefix = Interlocked.Increment(ref PREFIX);
-                MainActivity.SaveLog("can process image", DateTime.Now, prefix);
-                Image image = reader.AcquireNextImage();
-                // Process the image
-                if (image == null)
+                if (!MainActivity.bc.IsAddingCompleted)
                 {
-                    return;
-                }
+                    int prefix = Interlocked.Increment(ref PREFIX);
+                    MainActivity.SaveLog("can process image", DateTime.Now, prefix);
+                    Image image = reader.AcquireNextImage();
+                    // Process the image
+                    if (image == null)
+                    {
+                        return;
+                    }
 
-                int width = MainActivity.textureView.Width;
-                int height = MainActivity.textureView.Height;
-                Bitmap bitmap = MainActivity.textureView.GetBitmap(width, height);
-                MainActivity.SaveLog("created bitmap", DateTime.Now, prefix);
-                image.Close();
-                MemoryStream byteArrayOutputStream = new MemoryStream();
-                Bitmap cropped = Bitmap.CreateBitmap(bitmap, 0, 0, width, height);
-                cropped.Compress(Bitmap.CompressFormat.Png, 100, byteArrayOutputStream);
-                MainActivity.SaveLog("created png", DateTime.Now, prefix);
-                byte[] png = byteArrayOutputStream.ToArray();
-                MainActivity.RecognizeImage(bitmap, png, prefix);
+                    int width = MainActivity.textureView.Width;
+                    int height = MainActivity.textureView.Height;
+                    Bitmap bitmap = MainActivity.textureView.GetBitmap(width, height);
+                    MainActivity.SaveLog("created bitmap", DateTime.Now, prefix);
+                    image.Close();
+                    BitmapPrefix bitmapPrefix = new BitmapPrefix(bitmap, prefix);
+                    MainActivity.bc.Add(bitmapPrefix);
+                    MainActivity.RecognizeImage(bitmap, prefix);
+                }
                 Interlocked.Exchange(ref MainActivity.canProcessImage, 1);
             }
         }
