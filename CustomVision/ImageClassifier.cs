@@ -12,8 +12,10 @@ namespace CustomVision
      */
     public class ImageClassifier
     {
-        private readonly List<string> labels;
-        private readonly TensorFlowInferenceInterface inferenceInterface;
+        private readonly List<string> labels1;
+        private readonly List<string> labels2;
+        private readonly TensorFlowInferenceInterface inferenceInterface1;
+        private readonly TensorFlowInferenceInterface inferenceInterface2;
         private static readonly int InputSize = 227;
         private static readonly string InputName = "Placeholder";
         private static readonly string OutputName = "loss";
@@ -21,29 +23,36 @@ namespace CustomVision
         public ImageClassifier()
         {
             Android.Content.Res.AssetManager assets = Application.Context.Assets;
-			inferenceInterface = new TensorFlowInferenceInterface(assets, "model.pb");
+			inferenceInterface1 = new TensorFlowInferenceInterface(assets, "model1.pb");
+            inferenceInterface2 = new TensorFlowInferenceInterface(assets, "model2.pb");
 
-            using (StreamReader sr = new StreamReader(assets.Open("labels.txt")))
+            using (StreamReader sr = new StreamReader(assets.Open("labels1.txt")))
             {
                 string content = sr.ReadToEnd();
-                labels = content.Split('\n').Select(s => s.Trim()).Where(s => !string.IsNullOrEmpty(s)).ToList();
+                labels1 = content.Split('\n').Select(s => s.Trim()).Where(s => !string.IsNullOrEmpty(s)).ToList();
+            }
+
+            using (StreamReader sr = new StreamReader(assets.Open("labels2.txt")))
+            {
+                string content = sr.ReadToEnd();
+                labels2 = content.Split('\n').Select(s => s.Trim()).Where(s => !string.IsNullOrEmpty(s)).ToList();
             }
         }
 
-        public string RecognizeImage(Bitmap bitmap, int prefix)
+        public string RecognizeImage1(Bitmap bitmap, int prefix)
         {
             string[] outputNames = new[] { OutputName };
             float[] floatValues = GetBitmapPixels(bitmap);
-            float[] outputs = new float[labels.Count];
+            float[] outputs = new float[labels1.Count];
 
-            inferenceInterface.Feed(InputName, floatValues, 1, InputSize, InputSize, 3);
-            inferenceInterface.Run(outputNames);
-            inferenceInterface.Fetch(OutputName, outputs);
+            inferenceInterface1.Feed(InputName, floatValues, 1, InputSize, InputSize, 3);
+            inferenceInterface1.Run(outputNames);
+            inferenceInterface1.Fetch(OutputName, outputs);
 
             List<Tuple<float, string>> results = new List<Tuple<float, string>>();
             for (int i = 0; i < outputs.Length; ++i)
             {
-                results.Add(Tuple.Create(outputs[i], labels[i]));
+                results.Add(Tuple.Create(outputs[i], labels1[i]));
             }
             IOrderedEnumerable<Tuple<float, string>> orderedResults = 
                 results.OrderByDescending(t => t.Item1);
@@ -62,6 +71,41 @@ namespace CustomVision
                 return "unknown";
             }
             
+        }
+
+        public string RecognizeImage2(Bitmap bitmap, int prefix)
+        {
+            string[] outputNames = new[] { OutputName };
+            float[] floatValues = GetBitmapPixels(bitmap);
+            float[] outputs = new float[labels2.Count];
+
+            inferenceInterface2.Feed(InputName, floatValues, 1, InputSize, InputSize, 3);
+            inferenceInterface2.Run(outputNames);
+            inferenceInterface2.Fetch(OutputName, outputs);
+
+            List<Tuple<float, string>> results = new List<Tuple<float, string>>();
+            for (int i = 0; i < outputs.Length; ++i)
+            {
+                results.Add(Tuple.Create(outputs[i], labels2[i]));
+            }
+            IOrderedEnumerable<Tuple<float, string>> orderedResults =
+                results.OrderByDescending(t => t.Item1);
+            string orderedResultsMsg = "";
+            for (int i = 0; i < orderedResults.Count(); i++)
+            {
+                orderedResultsMsg += orderedResults.ElementAt(i).Item2 + ": "
+                    + orderedResults.ElementAt(i).Item1 + "; ";
+            }
+            MainActivity.SaveLog(orderedResultsMsg, DateTime.Now, prefix);
+            if (orderedResults.First().Item1 > .8)
+            {
+                return orderedResults.First().Item2;
+            }
+            else
+            {
+                return "unknown";
+            }
+
         }
 
         private static float[] GetBitmapPixels(Bitmap bitmap)

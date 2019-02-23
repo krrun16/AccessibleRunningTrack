@@ -51,6 +51,7 @@
     <Compile Include="StartActivity.cs" />
   </ItemGroup>
   <ItemGroup>
+    <AndroidAsset Include="Assets\model1.pb" />
     <None Include="Properties\AndroidManifest.xml" />
   </ItemGroup>
   <ItemGroup>
@@ -115,13 +116,16 @@
     </PackageReference>
   </ItemGroup>
   <ItemGroup>
-    <AndroidAsset Include="Assets\labels.txt" />
-    <AndroidAsset Include="Assets\model.pb" />
+    <AndroidAsset Include="Assets\labels2.txt" />
+    <AndroidAsset Include="Assets\model2.pb" />
   </ItemGroup>
   <ItemGroup>
     <AndroidResource Include="Resources\layout\start_btn.axml">
       <SubType>Designer</SubType>
     </AndroidResource>
+  </ItemGroup>
+  <ItemGroup>
+    <AndroidAsset Include="Assets\labels1.txt" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath)\Xamarin\Android\Xamarin.Android.CSharp.targets" />
 </Project>

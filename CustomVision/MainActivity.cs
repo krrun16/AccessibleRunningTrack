@@ -329,8 +329,18 @@ namespace CustomVision //name of our app
         public static void RecognizeImage(Bitmap rgbBitmap, int prefix)
         {
             //string result = await Task.Run(() => imageClassifier.RecognizeImage(rgbBitmap));
-            string result = imageClassifier.RecognizeImage(rgbBitmap, prefix);
-            SaveLog("recognized image", DateTime.Now, prefix);
+            //string result = imageClassifier.RecognizeImage1(rgbBitmap, prefix);
+            if(imageClassifier.RecognizeImage1(rgbBitmap, prefix) == "straight")
+            {
+                
+                string res = imageClassifier.RecognizeImage2(rgbBitmap, prefix);
+                SaveLog("Recognize image", DateTime.Now, prefix);
+
+            }
+            else
+            {
+               // SaveLog("Curve Image", DateTime.Now, prefix);
+            }
         }
 
         private static void SaveBitmap(byte[] data, int prefix) {
