@@ -460,6 +460,7 @@ namespace CustomVision //name of our app
                     BitmapPrefix bitmapPrefix = new BitmapPrefix(bitmap, prefix); // **TODO
                     MainActivity.bc.Add(bitmapPrefix); // **TODO
                     MainActivity.RecognizeImage(bitmap, prefix); // call the classifier to recognize the image
+                    bitmap.Dispose(); //release the memory to handle OutOfMemory error
                 }
                 Interlocked.Exchange(ref MainActivity.canProcessImage, 1); // equivalent to canProcessImage = 1; meaning anyone else can come with their image
             }
