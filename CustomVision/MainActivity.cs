@@ -193,6 +193,7 @@ namespace CustomVision //name of our app
                         SaveLog("created png", DateTime.Now, bitmapPrefix.Prefix);
                         byte[] png = byteArrayOutputStream.ToArray();
                         SaveBitmap(png, bitmapPrefix.Prefix);
+                        bitmapPrefix.Bitmap.Dispose(); //release the memory to handle OutOfMemory error
                     }
                 }
                 catch (InvalidOperationException)
@@ -468,9 +469,12 @@ namespace CustomVision //name of our app
                     MainActivity.SaveLog("created bitmap", DateTime.Now, prefix); // write when the bitmap is created to the log
                     image.Close(); // This closes the image so the phone no longer has to hold onto it, otherwise it will slow the system and stop collecting pictures
                     BitmapPrefix bitmapPrefix = new BitmapPrefix(bitmap, prefix); // **TODO
-                    MainActivity.bc.Add(bitmapPrefix); // **TODO
-                    MainActivity.RecognizeImage(bitmap, prefix); // call the classifier to recognize the image
-                    bitmap.Dispose(); //release the memory to handle OutOfMemory error
+                    if (!MainActivity.bc.IsAddingCompleted) // **TODO
+                    {
+                        MainActivity.bc.Add(bitmapPrefix); // **TODO
+                        MainActivity.RecognizeImage(bitmap, prefix); // call the classifier to recognize the image
+                        
+                    }
                 }
                 Interlocked.Exchange(ref MainActivity.canProcessImage, 1); // equivalent to canProcessImage = 1; meaning anyone else can come with their image
             }
