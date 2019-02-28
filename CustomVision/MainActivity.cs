@@ -225,6 +225,16 @@ namespace CustomVision //name of our app
             System.Environment.Exit(0);
         }
 
+        protected override void OnPause()
+        {
+            CloseCamera();
+            CloseBackgroundThread();
+            base.OnPause();
+            FinishAffinity();
+            System.Environment.Exit(0);
+        }
+
+
         private void CloseCamera()
         {
             bc.CompleteAdding();
@@ -241,6 +251,12 @@ namespace CustomVision //name of our app
                 cameraDevice.Close();
                 cameraDevice = null;
             }
+            if (imageReader != null)
+            {
+                imageReader.Close();
+                imageReader = null;
+            }
+
         }
 
         public static void CreatePreviewSession()
