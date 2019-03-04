@@ -99,7 +99,18 @@ namespace CustomVision
             MainActivity.SaveLog(orderedResultsMsg, DateTime.Now, prefix);
             if (orderedResults.First().Item1 > .8)
             {
-                return orderedResults.First().Item2;
+                // return orderedResults.First().Item2;
+                string bestResultSoFar = MainActivity.GetTopResult(labels2);
+                MainActivity.StoreResult(orderedResults.First().Item2);
+                if (bestResultSoFar == null)
+                {
+                    return orderedResults.First().Item2;
+                }
+                else
+                {
+                    MainActivity.SaveLog("best result found: " + bestResultSoFar, DateTime.Now, prefix);
+                    return bestResultSoFar;
+                }
             }
             else
             {

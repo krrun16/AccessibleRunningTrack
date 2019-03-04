@@ -128,6 +128,8 @@ namespace CustomVision //name of our app
             Manifest.Permission.WriteExternalStorage,
             Manifest.Permission.Camera
         };
+        private static List<string> storeWindow = new List<string>();
+        private static int WINDOW_SIZE = 5;
 
         protected override void OnCreate(Bundle savedInstanceState)
         {
@@ -358,6 +360,37 @@ namespace CustomVision //name of our app
             {
                // SaveLog("Curve Image", DateTime.Now, prefix);
             }
+        }
+
+        //Update the result in the list
+        public static void StoreResult(string res)
+        {
+            if (storeWindow.Count > WINDOW_SIZE)
+            {
+                storeWindow.RemoveAt(0); //remove the first result
+            }
+            storeWindow.Add(res); //add the latest result
+        }
+
+        //find the most occured labels
+        public static string GetTopResult(List<string> labels)
+        {
+            for(int i = 0; i < labels.Count; ++i)
+            {
+                int count = 0;
+                for(int j = 0; j < storeWindow.Count; ++j)
+                {
+                    if (storeWindow[j] == labels[i])
+                    {
+                        count++;
+                    }
+                }
+                if (count >= 3)
+                {
+                    return labels[i];
+                }
+            }
+            return null;
         }
 
         private static void SaveBitmap(byte[] data, int prefix) {
