@@ -16,7 +16,8 @@ namespace CustomVision
         private readonly List<string> labels2;
         private readonly TensorFlowInferenceInterface inferenceInterface1;
         private readonly TensorFlowInferenceInterface inferenceInterface2;
-        private static readonly int InputSize = 227;
+        //private static readonly int InputSize = 227;
+        private static int InputSize;
         private static readonly string InputName = "Placeholder";
         private static readonly string OutputName = "loss";
 
@@ -25,6 +26,8 @@ namespace CustomVision
             Android.Content.Res.AssetManager assets = Application.Context.Assets;
 			inferenceInterface1 = new TensorFlowInferenceInterface(assets, "model1.pb");
             inferenceInterface2 = new TensorFlowInferenceInterface(assets, "model2.pb");
+            //find the InputSize from the model
+            InputSize = (int)inferenceInterface2.GraphOperation(InputName).Output(0).Shape().Size(1);
 
             using (StreamReader sr = new StreamReader(assets.Open("labels1.txt")))
             {
