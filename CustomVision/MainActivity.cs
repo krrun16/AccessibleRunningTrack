@@ -393,17 +393,20 @@ namespace CustomVision //name of our app
             return null;
         }
 
-        private static void SaveBitmap(byte[] data, int prefix) {
-            DateTime currentDate = DateTime.Now;
-            long ts = currentDate.Ticks;
-            string sdcardPath = Android.OS.Environment.ExternalStorageDirectory.Path+FOLDER_NAME+"/"+IMAGE_FOLDER_COUNT;
-            string fileName = prefix + ".  " + currentDate.TimeOfDay + ".png";
-            string FilePath = System.IO.Path.Combine(sdcardPath, fileName);
-
-            if (!File.Exists(FilePath))
+        public static void SaveBitmap(byte[] data, int prefix) {
+            lock (locker)
             {
-                File.WriteAllBytes(FilePath, data);
-                SaveLog("saved image", DateTime.Now, prefix);
+                DateTime currentDate = DateTime.Now;
+                long ts = currentDate.Ticks;
+                string sdcardPath = Android.OS.Environment.ExternalStorageDirectory.Path + FOLDER_NAME + "/" + IMAGE_FOLDER_COUNT;
+                string fileName = prefix + ".  " + currentDate.TimeOfDay + ".png";
+                string FilePath = System.IO.Path.Combine(sdcardPath, fileName);
+
+                if (!File.Exists(FilePath))
+                {
+                    File.WriteAllBytes(FilePath, data);
+                    SaveLog("saved image", DateTime.Now, prefix);
+                }
             }
         }
 

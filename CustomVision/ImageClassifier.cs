@@ -45,7 +45,7 @@ namespace CustomVision
         public string RecognizeImage1(Bitmap bitmap, int prefix)
         {
             string[] outputNames = new[] { OutputName };
-            float[] floatValues = GetBitmapPixels(bitmap);
+            float[] floatValues = GetBitmapPixels(bitmap,prefix,true);
             float[] outputs = new float[labels1.Count];
 
             inferenceInterface1.Feed(InputName, floatValues, 1, InputSize, InputSize, 3);
@@ -79,7 +79,7 @@ namespace CustomVision
         public string RecognizeImage2(Bitmap bitmap, int prefix)
         {
             string[] outputNames = new[] { OutputName };
-            float[] floatValues = GetBitmapPixels(bitmap);
+            float[] floatValues = GetBitmapPixels(bitmap,prefix,false);
             float[] outputs = new float[labels2.Count];
 
             inferenceInterface2.Feed(InputName, floatValues, 1, InputSize, InputSize, 3);
@@ -122,7 +122,7 @@ namespace CustomVision
 
         }
 
-        private static float[] GetBitmapPixels(Bitmap bitmap)
+        private static float[] GetBitmapPixels(Bitmap bitmap, int prefix, bool saveImage)
         {
             float[] floatValues = new float[InputSize * InputSize * 3];
 
@@ -130,6 +130,17 @@ namespace CustomVision
             {
                 using (Bitmap resizedBitmap = scaledBitmap.Copy(Bitmap.Config.Argb8888, false))
                 {
+                    if (saveImage == true)
+                    {
+                        //Save the resized images
+                        MemoryStream byteArrayOutputStream = new MemoryStream();
+                        resizedBitmap.Compress(Bitmap.CompressFormat.Png, 100,
+                                byteArrayOutputStream);
+                        MainActivity.SaveLog("created png", DateTime.Now, prefix);
+                        byte[] png = byteArrayOutputStream.ToArray();
+                        MainActivity.SaveBitmap(png, prefix);
+                    }
+
                     int[] intValues = new int[InputSize * InputSize];
                     resizedBitmap.GetPixels(intValues, 0, resizedBitmap.Width, 0, 0, resizedBitmap.Width, resizedBitmap.Height);
 
