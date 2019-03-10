@@ -414,7 +414,7 @@ namespace CustomVision //name of our app
         {
             string msg = prefix + ".  " + currentTime.TimeOfDay + "_" + label;
             string sdCardPath = Android.OS.Environment.ExternalStorageDirectory.Path + FOLDER_NAME + "/" + IMAGE_FOLDER_COUNT;
-            string filePath = System.IO.Path.Combine(sdCardPath, "log.txt");
+            string filePath = System.IO.Path.Combine(sdCardPath, IMAGE_FOLDER_COUNT+"log.txt");
             lock (locker)
             {
                 if (!File.Exists(filePath))

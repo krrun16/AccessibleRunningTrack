@@ -45,7 +45,7 @@ namespace CustomVision
         public string RecognizeImage1(Bitmap bitmap, int prefix)
         {
             string[] outputNames = new[] { OutputName };
-            float[] floatValues = GetBitmapPixels(bitmap,prefix,true);
+            float[] floatValues = GetBitmapPixels(bitmap,prefix,false);
             float[] outputs = new float[labels1.Count];
 
             inferenceInterface1.Feed(InputName, floatValues, 1, InputSize, InputSize, 3);
@@ -79,7 +79,7 @@ namespace CustomVision
         public string RecognizeImage2(Bitmap bitmap, int prefix)
         {
             string[] outputNames = new[] { OutputName };
-            float[] floatValues = GetBitmapPixels(bitmap,prefix,false);
+            float[] floatValues = GetBitmapPixels(bitmap,prefix,true);
             float[] outputs = new float[labels2.Count];
 
             inferenceInterface2.Feed(InputName, floatValues, 1, InputSize, InputSize, 3);
@@ -126,9 +126,9 @@ namespace CustomVision
         {
             float[] floatValues = new float[InputSize * InputSize * 3];
 
-            using (Bitmap scaledBitmap = Bitmap.CreateScaledBitmap(bitmap, InputSize, InputSize, false))
+            using (Bitmap scaledBitmap = Bitmap.CreateScaledBitmap(bitmap, InputSize, InputSize, true))
             {
-                using (Bitmap resizedBitmap = scaledBitmap.Copy(Bitmap.Config.Argb8888, false))
+                using (Bitmap resizedBitmap = scaledBitmap.Copy(Bitmap.Config.Argb8888, true))
                 {
                     if (saveImage == true)
                     {
@@ -144,13 +144,17 @@ namespace CustomVision
                     int[] intValues = new int[InputSize * InputSize];
                     resizedBitmap.GetPixels(intValues, 0, resizedBitmap.Width, 0, 0, resizedBitmap.Width, resizedBitmap.Height);
 
+                    float IMAGE_MEAN_R = 0;
+                    float IMAGE_MEAN_G = 0;
+                    float IMAGE_MEAN_B = 0; 
+
                     for (int i = 0; i < intValues.Length; ++i)
                     {
                         int val = intValues[i];
 
-                        floatValues[(i * 3) + 0] = (val & 0xFF) - 104;
-                        floatValues[(i * 3) + 1] = ((val >> 8) & 0xFF) - 117;
-                        floatValues[(i * 3) + 2] = ((val >> 16) & 0xFF) - 123;
+                        floatValues[(i * 3) + 0] = (val & 0xFF) - IMAGE_MEAN_B;
+                        floatValues[(i * 3) + 1] = ((val >> 8) & 0xFF) - IMAGE_MEAN_G;
+                        floatValues[(i * 3) + 2] = ((val >> 16) & 0xFF) - IMAGE_MEAN_R;
                     }
 
                     resizedBitmap.Recycle();
