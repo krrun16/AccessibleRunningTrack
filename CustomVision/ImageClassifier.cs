@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using Android.App;
 using Android.Graphics;
+using Android.Util;
 using Org.Tensorflow.Contrib.Android;
 
 namespace CustomVision
@@ -20,14 +21,22 @@ namespace CustomVision
         private static int InputSize;
         private static readonly string InputName = "Placeholder";
         private static readonly string OutputName = "loss";
+        private static readonly String[] DATA_NORM_LAYER_PREFIX = {"data_bn", "BatchNorm1"};
+        private static Boolean hasNormalizationInterface1 = false;
+        private static Boolean hasNormalizationInterface2 = false;
 
         public ImageClassifier()
         {
             Android.Content.Res.AssetManager assets = Application.Context.Assets;
 			inferenceInterface1 = new TensorFlowInferenceInterface(assets, "model1.pb");
             inferenceInterface2 = new TensorFlowInferenceInterface(assets, "model2.pb");
+
             //find the InputSize from the model
             InputSize = (int)inferenceInterface2.GraphOperation(InputName).Output(0).Shape().Size(1);
+            hasNormalizationInterface1 = hasNormalization(inferenceInterface1);
+            hasNormalizationInterface2 = hasNormalization(inferenceInterface2);
+            Log.Debug("IOWA", "model1 " + hasNormalizationInterface1);
+            Log.Debug("IOWA", "model2 " + hasNormalizationInterface2);
 
             using (StreamReader sr = new StreamReader(assets.Open("labels1.txt")))
             {
@@ -40,12 +49,31 @@ namespace CustomVision
                 string content = sr.ReadToEnd();
                 labels2 = content.Split('\n').Select(s => s.Trim()).Where(s => !string.IsNullOrEmpty(s)).ToList();
             }
+
+        }
+
+        private Boolean hasNormalization(TensorFlowInferenceInterface inferenceInterface)
+        {
+            Java.Util.IIterator opIter= inferenceInterface.Graph().Operations();
+            while (opIter.HasNext)
+            {
+                Org.Tensorflow.Operation op = (Org.Tensorflow.Operation) opIter.Next();
+                for (int i=0; i<DATA_NORM_LAYER_PREFIX.Length;++i)
+                {
+                    if (op.Name().Contains(DATA_NORM_LAYER_PREFIX[i]))
+                    {
+                        Log.Debug("IOWA",op.Name()+"Got normalization");
+                        return true;
+                    }
+                }
+            }
+            return false;
         }
 
         public string RecognizeImage1(Bitmap bitmap, int prefix)
         {
             string[] outputNames = new[] { OutputName };
-            float[] floatValues = GetBitmapPixels(bitmap,prefix,false);
+            float[] floatValues = GetBitmapPixels(bitmap,prefix,false,hasNormalizationInterface1);
             float[] outputs = new float[labels1.Count];
 
             inferenceInterface1.Feed(InputName, floatValues, 1, InputSize, InputSize, 3);
@@ -79,7 +107,7 @@ namespace CustomVision
         public string RecognizeImage2(Bitmap bitmap, int prefix)
         {
             string[] outputNames = new[] { OutputName };
-            float[] floatValues = GetBitmapPixels(bitmap,prefix,true);
+            float[] floatValues = GetBitmapPixels(bitmap,prefix,true, hasNormalizationInterface2);
             float[] outputs = new float[labels2.Count];
 
             inferenceInterface2.Feed(InputName, floatValues, 1, InputSize, InputSize, 3);
@@ -122,7 +150,7 @@ namespace CustomVision
 
         }
 
-        private static float[] GetBitmapPixels(Bitmap bitmap, int prefix, bool saveImage)
+        private static float[] GetBitmapPixels(Bitmap bitmap, int prefix, bool saveImage, Boolean hasNormalization)
         {
             float[] floatValues = new float[InputSize * InputSize * 3];
 
@@ -144,9 +172,17 @@ namespace CustomVision
                     int[] intValues = new int[InputSize * InputSize];
                     resizedBitmap.GetPixels(intValues, 0, resizedBitmap.Width, 0, 0, resizedBitmap.Width, resizedBitmap.Height);
 
+                    
                     float IMAGE_MEAN_R = 0;
                     float IMAGE_MEAN_G = 0;
                     float IMAGE_MEAN_B = 0; 
+
+                    if(hasNormalization == false)
+                    {
+                        IMAGE_MEAN_R = 124;
+                        IMAGE_MEAN_G = 117;
+                        IMAGE_MEAN_B = 105;
+                    }
 
                     for (int i = 0; i < intValues.Length; ++i)
                     {
