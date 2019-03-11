@@ -164,12 +164,12 @@ namespace CustomVision
                     float IMAGE_MEAN_G = 0;
                     float IMAGE_MEAN_B = 0; 
 
-                   /* if(hasNormalization == false)
+                    if(hasNormalization == false)
                     {
                         IMAGE_MEAN_R = 124;
                         IMAGE_MEAN_G = 117;
                         IMAGE_MEAN_B = 105;
-                    }*/
+                    }
 
                     for (int i = 0; i < intValues.Length; ++i)
                     {
