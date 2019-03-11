@@ -107,7 +107,7 @@ namespace CustomVision //name of our app
         public static TextureView textureView;
         private static readonly string FOLDER_NAME = "/CustomVision";
         private static int IMAGE_FOLDER_COUNT = 1;
-        private static readonly ImageClassifier imageClassifier = new ImageClassifier();
+        public static readonly ImageClassifier imageClassifier = new ImageClassifier();
         public static Size previewSize;
         public static ImageReader imageReader;
         internal static CameraDevice cameraDevice;
@@ -130,6 +130,7 @@ namespace CustomVision //name of our app
         };
         private static List<string> storeWindow = new List<string>();
         private static int WINDOW_SIZE = 5;
+       
 
         protected override void OnCreate(Bundle savedInstanceState)
         {
@@ -188,14 +189,12 @@ namespace CustomVision //name of our app
                     {
                         BitmapPrefix bitmapPrefix = bc.Take();
                         MemoryStream byteArrayOutputStream = new MemoryStream();
-                        Bitmap cropped = Bitmap.CreateBitmap(bitmapPrefix.Bitmap, 0, 0,
-                            textureView.Width, textureView.Height);
-                        cropped.Compress(Bitmap.CompressFormat.Png, 100,
+                        bitmapPrefix.Bitmap.Compress(Bitmap.CompressFormat.Png, 100,
                             byteArrayOutputStream);
                         SaveLog("created png", DateTime.Now, bitmapPrefix.Prefix);
                         byte[] png = byteArrayOutputStream.ToArray();
                         SaveBitmap(png, bitmapPrefix.Prefix);
-                        bitmapPrefix.Bitmap.Dispose(); //release the memory to handle OutOfMemory error
+                        //bitmapPrefix.Bitmap.Dispose(); //release the memory to handle OutOfMemory error
                     }
                 }
                 catch (InvalidOperationException)
@@ -410,6 +409,7 @@ namespace CustomVision //name of our app
             }
         }
 
+
         public static void SaveLog(string label, DateTime currentTime, int prefix)
         {
             string msg = prefix + ".  " + currentTime.TimeOfDay + "_" + label;
@@ -497,7 +497,6 @@ namespace CustomVision //name of our app
     internal class ImageAvailableListener : Java.Lang.Object, ImageReader.IOnImageAvailableListener
     {
         private int PREFIX = 0;
-
         // We don't explicitly call this code
         // If there is a picture available...
         public void OnImageAvailable(ImageReader reader)
@@ -518,19 +517,26 @@ namespace CustomVision //name of our app
                     }
                     //textureview is the region of the screen that contains the camera, so get the picture with the same dimensions as the screen
                     Bitmap bitmap = MainActivity.textureView.GetBitmap(MainActivity.textureView.Width, MainActivity.textureView.Height);
+                    //retrieve the input size from the ImageClassifier
+                    int inputsize = MainActivity.imageClassifier.getInputSize();
+                    //resize the bitmap
+                    Bitmap scaledBitmap = Bitmap.CreateScaledBitmap(bitmap,inputsize, inputsize, false);
+                    Bitmap resizedBitmap = scaledBitmap.Copy(Bitmap.Config.Argb8888, false);
                     MainActivity.SaveLog("created bitmap", DateTime.Now, prefix); // write when the bitmap is created to the log
                     image.Close(); // This closes the image so the phone no longer has to hold onto it, otherwise it will slow the system and stop collecting pictures
-                    BitmapPrefix bitmapPrefix = new BitmapPrefix(bitmap, prefix); // **TODO
+                    BitmapPrefix bitmapPrefix = new BitmapPrefix(resizedBitmap, prefix); // **TODO
                     if (!MainActivity.bc.IsAddingCompleted) // **TODO
                     {
                         MainActivity.bc.Add(bitmapPrefix); // **TODO
-                        MainActivity.RecognizeImage(bitmap, prefix); // call the classifier to recognize the image
+                        MainActivity.RecognizeImage(resizedBitmap, prefix); // call the classifier to recognize the resizedimage
                     }
                 }
                 Interlocked.Exchange(ref MainActivity.canProcessImage, 1); // equivalent to canProcessImage = 1; meaning anyone else can come with their image
             }
         }
     }
+
+
 }
 
 
