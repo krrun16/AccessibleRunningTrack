@@ -24,7 +24,6 @@ namespace CustomVision
         private static readonly String[] DATA_NORM_LAYER_PREFIX = {"data_bn", "BatchNorm1"};
         private static Boolean hasNormalizationInterface1 = false;
         private static Boolean hasNormalizationInterface2 = false;
-        private static readonly object locker = new object();
 
         public ImageClassifier()
         {
@@ -36,20 +35,21 @@ namespace CustomVision
             InputSize = (int)inferenceInterface2.GraphOperation(InputName).Output(0).Shape().Size(1);
             hasNormalizationInterface1 = hasNormalization(inferenceInterface1);
             hasNormalizationInterface2 = hasNormalization(inferenceInterface2);
+            Log.Debug("IOWA", "model1 " + hasNormalizationInterface1);
+            Log.Debug("IOWA", "model2 " + hasNormalizationInterface2);
+
             using (StreamReader sr = new StreamReader(assets.Open("labels1.txt")))
             {
                 string content = sr.ReadToEnd();
                 labels1 = content.Split('\n').Select(s => s.Trim()).Where(s => !string.IsNullOrEmpty(s)).ToList();
             }
+
             using (StreamReader sr = new StreamReader(assets.Open("labels2.txt")))
             {
                 string content = sr.ReadToEnd();
                 labels2 = content.Split('\n').Select(s => s.Trim()).Where(s => !string.IsNullOrEmpty(s)).ToList();
             }
-        }
 
-        public int getInputSize() {
-            return InputSize;
         }
 
         private Boolean hasNormalization(TensorFlowInferenceInterface inferenceInterface)
@@ -62,6 +62,7 @@ namespace CustomVision
                 {
                     if (op.Name().Contains(DATA_NORM_LAYER_PREFIX[i]))
                     {
+                        Log.Debug("IOWA",op.Name()+"Got normalization");
                         return true;
                     }
                 }
@@ -152,24 +153,36 @@ namespace CustomVision
         private static float[] GetBitmapPixels(Bitmap bitmap, int prefix, bool saveImage, Boolean hasNormalization)
         {
             float[] floatValues = new float[InputSize * InputSize * 3];
-            //using (Bitmap scaledBitmap = Bitmap.CreateScaledBitmap(bitmap, InputSize, InputSize, false))
+
+            using (Bitmap scaledBitmap = Bitmap.CreateScaledBitmap(bitmap, InputSize, InputSize, true))
             {
-                //using (Bitmap resizedBitmap = scaledBitmap.Copy(Bitmap.Config.Argb8888, false))
+                using (Bitmap resizedBitmap = scaledBitmap.Copy(Bitmap.Config.Argb8888, true))
                 {
+                    if (saveImage == true)
+                    {
+                        //Save the resized images
+                        MemoryStream byteArrayOutputStream = new MemoryStream();
+                        resizedBitmap.Compress(Bitmap.CompressFormat.Png, 100,
+                                byteArrayOutputStream);
+                        MainActivity.SaveLog("created png", DateTime.Now, prefix);
+                        byte[] png = byteArrayOutputStream.ToArray();
+                        MainActivity.SaveBitmap(png, prefix);
+                    }
+
                     int[] intValues = new int[InputSize * InputSize];
-                    bitmap.GetPixels(intValues, 0, bitmap.Width, 0, 0, bitmap.Width, bitmap.Height);
+                    resizedBitmap.GetPixels(intValues, 0, resizedBitmap.Width, 0, 0, resizedBitmap.Width, resizedBitmap.Height);
 
                     
                     float IMAGE_MEAN_R = 0;
                     float IMAGE_MEAN_G = 0;
                     float IMAGE_MEAN_B = 0; 
 
-                   /* if(hasNormalization == false)
+                    if(hasNormalization == false)
                     {
                         IMAGE_MEAN_R = 124;
                         IMAGE_MEAN_G = 117;
                         IMAGE_MEAN_B = 105;
-                    }*/
+                    }
 
                     for (int i = 0; i < intValues.Length; ++i)
                     {
@@ -180,10 +193,10 @@ namespace CustomVision
                         floatValues[(i * 3) + 2] = ((val >> 16) & 0xFF) - IMAGE_MEAN_R;
                     }
 
-                    //bitmap.Recycle();
+                    resizedBitmap.Recycle();
                 }
 
-                //bitmap.Recycle();
+                scaledBitmap.Recycle();
             }
 
             return floatValues;
