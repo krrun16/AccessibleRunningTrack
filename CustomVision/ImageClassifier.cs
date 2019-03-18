@@ -105,13 +105,18 @@ namespace CustomVision
 
         public string RecognizeImage2(Bitmap bitmap, int prefix)
         {
+            MainActivity.SaveLog("start method", DateTime.Now, prefix);
             string[] outputNames = new[] { OutputName };
             float[] floatValues = GetBitmapPixels(bitmap,prefix,true, hasNormalizationInterface2);
+            MainActivity.SaveLog("got bitmappixels", DateTime.Now, prefix);
             float[] outputs = new float[labels2.Count];
 
             inferenceInterface2.Feed(InputName, floatValues, 1, InputSize, InputSize, 3);
+            MainActivity.SaveLog("feed", DateTime.Now, prefix);
             inferenceInterface2.Run(outputNames);
+            MainActivity.SaveLog("run", DateTime.Now, prefix);
             inferenceInterface2.Fetch(OutputName, outputs);
+            MainActivity.SaveLog("fetch", DateTime.Now, prefix);
 
             List<Tuple<float, string>> results = new List<Tuple<float, string>>();
             for (int i = 0; i < outputs.Length; ++i)
@@ -153,9 +158,9 @@ namespace CustomVision
         {
             float[] floatValues = new float[InputSize * InputSize * 3];
             //using (Bitmap scaledBitmap = Bitmap.CreateScaledBitmap(bitmap, InputSize, InputSize, false))
-            {
+            //{
                 //using (Bitmap resizedBitmap = scaledBitmap.Copy(Bitmap.Config.Argb8888, false))
-                {
+                //{
                     int[] intValues = new int[InputSize * InputSize];
                     bitmap.GetPixels(intValues, 0, bitmap.Width, 0, 0, bitmap.Width, bitmap.Height);
 
@@ -181,10 +186,10 @@ namespace CustomVision
                     }
 
                     //bitmap.Recycle();
-                }
+              //}
 
                 //bitmap.Recycle();
-            }
+            //}
 
             return floatValues;
         }
