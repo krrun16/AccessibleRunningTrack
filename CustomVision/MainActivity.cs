@@ -103,7 +103,7 @@ namespace CustomVision //name of our app
     [Activity(Label = "@string/app_name", MainLauncher = false, Icon = "@mipmap/icon", Theme = "@style/MyTheme", ScreenOrientation = ScreenOrientation.Portrait)]
     public class MainActivity : AppCompatActivity, TextureView.ISurfaceTextureListener
     {
-        private int cameraFacing;
+        public static int cameraFacing;
         public static TextureView textureView;
         private static readonly string FOLDER_NAME = "/CustomVision";
         private static int IMAGE_FOLDER_COUNT = 1;
@@ -520,6 +520,16 @@ namespace CustomVision //name of our app
                     //retrieve the input size from the ImageClassifier
                     int inputsize = MainActivity.imageClassifier.getInputSize();
                     //resize the bitmap
+
+                    if(MainActivity.cameraFacing == (int) LensFacing.Front)
+                    {
+                        Log.Debug("iowa","oh no this is front camera.");
+                        int cx = bitmap.Width / 2;
+                        int cy = bitmap.Height / 2;
+                        Matrix matrix = new Matrix();
+                        matrix.PostScale(-1, 1, cx, cy);
+                        bitmap = Bitmap.CreateBitmap(bitmap, 0, 0, bitmap.Width, bitmap.Height, matrix, true);
+                    }
                     Bitmap scaledBitmap = Bitmap.CreateScaledBitmap(bitmap,inputsize, inputsize, false);
                     Bitmap resizedBitmap = scaledBitmap.Copy(Bitmap.Config.Argb8888, false);
                     MainActivity.SaveLog("created bitmap", DateTime.Now, prefix); // write when the bitmap is created to the log
