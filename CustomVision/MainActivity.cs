@@ -135,7 +135,7 @@ namespace CustomVision //name of our app
         protected override void OnCreate(Bundle savedInstanceState)
         {
             base.OnCreate(savedInstanceState);
-            cameraFacing = (int)LensFacing.Front;
+            cameraFacing = (int)LensFacing.Back;
             textureView = new TextureView(this);
             SetContentView(textureView);
             Window.SetFlags(WindowManagerFlags.KeepScreenOn, WindowManagerFlags.KeepScreenOn);
