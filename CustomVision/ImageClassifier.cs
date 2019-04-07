@@ -6,6 +6,7 @@ using Android.App;
 using Android.Graphics;
 using Android.Util;
 using Org.Tensorflow.Contrib.Android;
+using 
 
 namespace CustomVision
 {
@@ -134,7 +135,7 @@ namespace CustomVision
             MainActivity.SaveLog(orderedResultsMsg, DateTime.Now, prefix);
             if (orderedResults.First().Item1 > .8)
             {
-
+                CrossTextToSpeech.Current.Speak($"{orderedResults.First().Item2}");
                 // return orderedResults.First().Item2;
                 string bestResultSoFar = MainActivity.GetTopResult(labels2);
                 MainActivity.StoreResult(orderedResults.First().Item2);
