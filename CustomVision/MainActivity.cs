@@ -7,7 +7,6 @@ using Android.Support.V7.App;
 using Android.Views;
 using Android.Util;
 using System.IO;
-using Android.Support.V4.App;
 using Android;
 using Android.Hardware.Camera2;
 using Android.Graphics;
