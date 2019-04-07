@@ -5,6 +5,7 @@ using Android.App;
 using Android.Content;
 using Android.Content.Res;
 using Android.Graphics;
+using Android.Media;
 using Android.OS;
 using Android.Support.V4.App;
 using Android.Support.V7.App;
@@ -36,7 +37,7 @@ namespace CustomVision
            
             StartButton.Click += StartButton_Click;
 
-            AssetManager assetManager = Application.Context.Assets;
+            /*AssetManager assetManager = Application.Context.Assets;
             string[] assetsList = assetManager.List("");
             foreach (string fileName in assetsList)
             {
@@ -46,13 +47,47 @@ namespace CustomVision
                     string result = imageTestClassifier.RecognizeImage2(test, fileName);
                     Log(result, DateTime.Now, fileName);
                 }
+            }*/
+
+            MediaMetadataRetriever mRetriever = new MediaMetadataRetriever();
+            AssetManager assetManager = Application.Context.Assets;
+            AssetFileDescriptor afd = assetManager.OpenFd("test_rotated.mp4");
+            mRetriever.SetDataSource(afd.FileDescriptor, afd.StartOffset, afd.Length);
+            for (int i = 0; i < 100000000; i+= 1000000)
+            {
+                Bitmap test = mRetriever.GetFrameAtTime(i);
+                string result = imageTestClassifier.RecognizeImage2(test, "" + i);
+                MemoryStream byteArrayOutputStream = new MemoryStream();
+                test.Compress(Bitmap.CompressFormat.Png, 100, byteArrayOutputStream);
+                Log("created png", DateTime.Now, ""+i);
+                byte[] png = byteArrayOutputStream.ToArray();
+                SaveTestBitmap(png, "" + i);
+                Log(result, DateTime.Now, "" + i);
+            }
+        }
+
+        public static void SaveTestBitmap(byte[] data, string prefix)
+        {
+            lock (locker)
+            {
+                DateTime currentDate = DateTime.Now;
+                long ts = currentDate.Ticks;
+                string sdcardPath = Android.OS.Environment.ExternalStorageDirectory.Path + "/CustomVision";
+                string fileName = prefix + ".png";
+                string FilePath = System.IO.Path.Combine(sdcardPath, fileName);
+
+                if (!File.Exists(FilePath))
+                {
+                    File.WriteAllBytes(FilePath, data);
+                    Log("saved image", DateTime.Now, prefix);
+                }
             }
         }
 
         public Bitmap getBitmapFromAssets(string fileName)
         {
             AssetManager assetManager = Application.Context.Assets;
-            Stream istr = assetManager.Open(fileName);
+            System.IO.Stream istr = assetManager.Open(fileName);
             Bitmap bitmap = BitmapFactory.DecodeStream(istr);
             istr.Close();
             return bitmap;
