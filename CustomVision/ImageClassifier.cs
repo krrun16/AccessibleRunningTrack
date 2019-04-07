@@ -6,6 +6,7 @@ using Android.App;
 using Android.Graphics;
 using Android.Util;
 using Org.Tensorflow.Contrib.Android;
+using Plugin.TextToSpeech;
 
 namespace CustomVision
 {
@@ -69,7 +70,7 @@ namespace CustomVision
             return false;
         }
 
-        public string RecognizeImage1(Bitmap bitmap, int prefix)
+        public string RecognizeImage1(Bitmap bitmap, string prefix)
         {
             string[] outputNames = new[] { OutputName };
             float[] floatValues = GetBitmapPixels(bitmap,prefix,false,hasNormalizationInterface1);
@@ -92,7 +93,7 @@ namespace CustomVision
                 orderedResultsMsg += orderedResults.ElementAt(i).Item2 + ": " 
                     + orderedResults.ElementAt(i).Item1 + "; ";
             }
-            MainActivity.SaveLog(orderedResultsMsg, DateTime.Now, prefix);
+            StartActivity.Log(orderedResultsMsg, DateTime.Now, prefix);
             if (orderedResults.First().Item1 > .8)
             {
                 return orderedResults.First().Item2;
@@ -103,20 +104,20 @@ namespace CustomVision
             
         }
 
-        public string RecognizeImage2(Bitmap bitmap, int prefix)
+        public string RecognizeImage2(Bitmap bitmap, string prefix)
         {
-            MainActivity.SaveLog("start method", DateTime.Now, prefix);
+            StartActivity.Log("start method", DateTime.Now, prefix);
             string[] outputNames = new[] { OutputName };
             float[] floatValues = GetBitmapPixels(bitmap,prefix,true, hasNormalizationInterface2);
-            MainActivity.SaveLog("got bitmappixels", DateTime.Now, prefix);
+            StartActivity.Log("got bitmappixels", DateTime.Now, prefix);
             float[] outputs = new float[labels2.Count];
 
             inferenceInterface2.Feed(InputName, floatValues, 1, InputSize, InputSize, 3);
-            MainActivity.SaveLog("feed", DateTime.Now, prefix);
+            StartActivity.Log("feed", DateTime.Now, prefix);
             inferenceInterface2.Run(outputNames);
-            MainActivity.SaveLog("run", DateTime.Now, prefix);
+            StartActivity.Log("run", DateTime.Now, prefix);
             inferenceInterface2.Fetch(OutputName, outputs);
-            MainActivity.SaveLog("fetch", DateTime.Now, prefix);
+            StartActivity.Log("fetch", DateTime.Now, prefix);
 
             List<Tuple<float, string>> results = new List<Tuple<float, string>>();
             for (int i = 0; i < outputs.Length; ++i)
@@ -131,9 +132,10 @@ namespace CustomVision
                 orderedResultsMsg += orderedResults.ElementAt(i).Item2 + ": "
                     + orderedResults.ElementAt(i).Item1 + "; ";
             }
-            MainActivity.SaveLog(orderedResultsMsg, DateTime.Now, prefix);
+            StartActivity.Log(orderedResultsMsg, DateTime.Now, prefix);
             if (orderedResults.First().Item1 > .8)
             {
+                CrossTextToSpeech.Current.Speak($"{orderedResults.First().Item2}");
                 // return orderedResults.First().Item2;
                 string bestResultSoFar = MainActivity.GetTopResult(labels2);
                 MainActivity.StoreResult(orderedResults.First().Item2);
@@ -143,7 +145,7 @@ namespace CustomVision
                 }
                 else
                 {
-                    MainActivity.SaveLog("best result found: " + bestResultSoFar, DateTime.Now, prefix);
+                    StartActivity.Log("best result found: " + bestResultSoFar, DateTime.Now, prefix);
                     return bestResultSoFar;
                 }
             }
@@ -154,7 +156,7 @@ namespace CustomVision
 
         }
 
-        private static float[] GetBitmapPixels(Bitmap bitmap, int prefix, bool saveImage, Boolean hasNormalization)
+        private static float[] GetBitmapPixels(Bitmap bitmap, string prefix, bool saveImage, Boolean hasNormalization)
         {
             float[] floatValues = new float[InputSize * InputSize * 3];
             //using (Bitmap scaledBitmap = Bitmap.CreateScaledBitmap(bitmap, InputSize, InputSize, false))

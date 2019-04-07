@@ -135,7 +135,7 @@ namespace CustomVision //name of our app
         protected override void OnCreate(Bundle savedInstanceState)
         {
             base.OnCreate(savedInstanceState);
-            cameraFacing = (int)LensFacing.Front;
+            cameraFacing = (int)LensFacing.Back;
             textureView = new TextureView(this);
             SetContentView(textureView);
             Window.SetFlags(WindowManagerFlags.KeepScreenOn, WindowManagerFlags.KeepScreenOn);
@@ -348,7 +348,7 @@ namespace CustomVision //name of our app
         {
             //string result = await Task.Run(() => imageClassifier.RecognizeImage(rgbBitmap));
             //string result = imageClassifier.RecognizeImage1(rgbBitmap, prefix);
-            if(imageClassifier.RecognizeImage1(rgbBitmap, prefix) == "straight")
+            /*if(imageClassifier.RecognizeImage1(rgbBitmap, prefix) == "straight")
             {
                 
                 string res = imageClassifier.RecognizeImage2(rgbBitmap, prefix);
@@ -358,7 +358,7 @@ namespace CustomVision //name of our app
             else
             {
                // SaveLog("Curve Image", DateTime.Now, prefix);
-            }
+            }*/
         }
 
         //Update the result in the list
