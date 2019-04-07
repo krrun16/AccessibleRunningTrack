@@ -51,14 +51,17 @@ namespace CustomVision
 
             MediaMetadataRetriever mRetriever = new MediaMetadataRetriever();
             AssetManager assetManager = Application.Context.Assets;
-            AssetFileDescriptor afd = assetManager.OpenFd("test_rotated.mp4");
+            AssetFileDescriptor afd = assetManager.OpenFd("test2_rotated.mp4");
             mRetriever.SetDataSource(afd.FileDescriptor, afd.StartOffset, afd.Length);
             for (int i = 0; i < 100000000; i+= 1000000)
             {
                 Bitmap test = mRetriever.GetFrameAtTime(i);
-                string result = imageTestClassifier.RecognizeImage2(test, "" + i);
+                int inputsize = imageTestClassifier.getInputSize();
+                Bitmap scaledBitmap = Bitmap.CreateScaledBitmap(test, inputsize, inputsize, false);
+                Bitmap resizedBitmap = scaledBitmap.Copy(Bitmap.Config.Argb8888, false);
+                string result = imageTestClassifier.RecognizeImage2(resizedBitmap, "" + i);
                 MemoryStream byteArrayOutputStream = new MemoryStream();
-                test.Compress(Bitmap.CompressFormat.Png, 100, byteArrayOutputStream);
+                resizedBitmap.Compress(Bitmap.CompressFormat.Png, 100, byteArrayOutputStream);
                 Log("created png", DateTime.Now, ""+i);
                 byte[] png = byteArrayOutputStream.ToArray();
                 SaveTestBitmap(png, "" + i);

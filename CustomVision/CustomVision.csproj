@@ -580,5 +580,8 @@
   <ItemGroup>
     <AndroidAsset Include="Assets\test_rotated.mp4" />
   </ItemGroup>
+  <ItemGroup>
+    <AndroidAsset Include="Assets\test2_rotated.mp4" />
+  </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath)\Xamarin\Android\Xamarin.Android.CSharp.targets" />
 </Project>
