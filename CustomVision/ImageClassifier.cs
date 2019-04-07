@@ -6,7 +6,7 @@ using Android.App;
 using Android.Graphics;
 using Android.Util;
 using Org.Tensorflow.Contrib.Android;
-using 
+using Plugin.TextToSpeech;
 
 namespace CustomVision
 {
