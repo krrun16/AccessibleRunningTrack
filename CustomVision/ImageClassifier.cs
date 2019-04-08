@@ -4,7 +4,6 @@ using System.IO;
 using System.Linq;
 using Android.App;
 using Android.Graphics;
-using Android.Util;
 using Org.Tensorflow.Contrib.Android;
 using Plugin.TextToSpeech;
 
@@ -18,7 +17,6 @@ namespace CustomVision
         private readonly List<string> labels2;
         private readonly TensorFlowInferenceInterface inferenceInterface1;
         private readonly TensorFlowInferenceInterface inferenceInterface2;
-        //private static readonly int InputSize = 227;
         private static int InputSize;
         private static readonly string InputName = "Placeholder";
         private static readonly string OutputName = "loss";

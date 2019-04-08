@@ -2,7 +2,6 @@
 using Android;
 using Android.App;
 using Android.Content;
-using Android.Content.PM;
 using Android.OS;
 using Android.Support.V4.App;
 using Android.Support.V7.App;
