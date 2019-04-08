@@ -120,7 +120,7 @@
     <AndroidAsset Include="Assets\model2.pb" />
   </ItemGroup>
   <ItemGroup>
-    <AndroidResource Include="Resources\layout\start_btn.axml">
+    <AndroidResource Include="Resources\layout\StartScreen.axml">
       <SubType>Designer</SubType>
     </AndroidResource>
   </ItemGroup>

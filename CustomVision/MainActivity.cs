@@ -121,6 +121,7 @@ namespace CustomVision //name of our app
         private static Task task;
         private static Task task2;
         private static readonly object locker = new object();
+        public bool show_video = false;
 
         private static readonly string[] permissions = {
             Manifest.Permission.WriteExternalStorage,
@@ -132,6 +133,7 @@ namespace CustomVision //name of our app
         protected override void OnCreate(Bundle savedInstanceState)
         {
             base.OnCreate(savedInstanceState);
+            show_video = Intent.GetBooleanExtra("show_video", false);
             cameraFacing = (int)LensFacing.Back;
             textureView = new TextureView(this);
             SetContentView(textureView);

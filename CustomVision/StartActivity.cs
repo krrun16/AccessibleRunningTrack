@@ -17,7 +17,7 @@ namespace CustomVision
         private Button startButton, startButtonNoVideo;
         private Button StartButton => startButton ?? 
             (startButton = FindViewById<Button>(Resource.Id.start_btn));
-        private Button StartButtonNoVideo => StartButtonNoVideo ?? 
+        private Button StartButtonNoVideo => startButtonNoVideo ?? 
             (startButtonNoVideo = FindViewById<Button>(Resource.Id.start_btn_no_vid));
 
         private static readonly string[] permissions = {
