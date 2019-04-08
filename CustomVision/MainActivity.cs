@@ -121,37 +121,42 @@ namespace CustomVision //name of our app
         private static Task task;
         private static Task task2;
         private static readonly object locker = new object();
-        public bool show_video = false;
+        public static bool show_video = false;
 
         private static readonly string[] permissions = {
             Manifest.Permission.WriteExternalStorage,
             Manifest.Permission.Camera
         };
         private static List<string> storeWindow = new List<string>();
-        private static int WINDOW_SIZE = 5;
+        private static readonly int WINDOW_SIZE = 5;
        
         protected override void OnCreate(Bundle savedInstanceState)
         {
             base.OnCreate(savedInstanceState);
             show_video = Intent.GetBooleanExtra("show_video", false);
             cameraFacing = (int)LensFacing.Back;
-            textureView = new TextureView(this);
-            SetContentView(textureView);
-            Window.SetFlags(WindowManagerFlags.KeepScreenOn, WindowManagerFlags.KeepScreenOn);
-            string sdcardPath = Android.OS.Environment.ExternalStorageDirectory.Path + FOLDER_NAME + "/" + IMAGE_FOLDER_COUNT;
+            string sdcardPath = Android.OS.Environment.ExternalStorageDirectory.Path + 
+                FOLDER_NAME + "/" + IMAGE_FOLDER_COUNT;
+            if (show_video)
+            {
+                textureView = new TextureView(this);
+                SetContentView(textureView);
+                Window.SetFlags(WindowManagerFlags.KeepScreenOn, WindowManagerFlags.KeepScreenOn);
+            }
 
             if (Directory.Exists(sdcardPath))
             {
                 while (Directory.Exists(sdcardPath))
                 {
                     IMAGE_FOLDER_COUNT += 1;
-                    sdcardPath = Android.OS.Environment.ExternalStorageDirectory.Path + FOLDER_NAME + "/" + IMAGE_FOLDER_COUNT;
+                    sdcardPath = Android.OS.Environment.ExternalStorageDirectory.Path + 
+                        FOLDER_NAME + "/" + IMAGE_FOLDER_COUNT;
                 }
             }
             if (!Directory.Exists(sdcardPath))
             {
-                if (Android.Support.V4.Content.ContextCompat.CheckSelfPermission(this, Manifest.Permission.WriteExternalStorage)
-                        == Permission.Granted)
+                if (Android.Support.V4.Content.ContextCompat.CheckSelfPermission(this, 
+                    Manifest.Permission.WriteExternalStorage) == Permission.Granted)
                 {
                     Directory.CreateDirectory(sdcardPath);
                 }
@@ -162,7 +167,7 @@ namespace CustomVision //name of our app
         {
             base.OnResume();
             OpenBackgroundThread();
-            if(textureView.IsAvailable)
+            if(show_video && textureView.IsAvailable || !show_video)
             {
                 if (cameraDevice == null)
                 {
@@ -170,7 +175,7 @@ namespace CustomVision //name of our app
                     SetUpCamera(cameraManager);
                     OpenCamera(cameraManager);
                 }
-            } else
+            } else if (show_video && !textureView.IsAvailable)
             {
                 textureView.SurfaceTextureListener = this;
             }
@@ -192,6 +197,7 @@ namespace CustomVision //name of our app
                         byte[] png = byteArrayOutputStream.ToArray();
                         SaveBitmap(png, bitmapPrefix.Prefix);
                         //bitmapPrefix.Bitmap.Dispose(); //release the memory to handle OutOfMemory error
+                        //**TODO: why is this commented out?
                     }
                 }
                 catch (InvalidOperationException)
@@ -259,14 +265,17 @@ namespace CustomVision //name of our app
             try
             {
                 BC_SaveImages();
-                SurfaceTexture surfaceTexture = textureView.SurfaceTexture;
-                surfaceTexture.SetDefaultBufferSize(previewSize.Width, previewSize.Height);
-                Surface previewSurface = new Surface(surfaceTexture);
-                captureRequestBuilder = cameraDevice.CreateCaptureRequest(CameraTemplate.Preview);
-                captureRequestBuilder.AddTarget(previewSurface);
-                captureRequestBuilder.AddTarget(imageReader.Surface);
-                cameraDevice.CreateCaptureSession(new List<Surface>() { previewSurface, imageReader.Surface },
-                    new CameraCaptureStateCallback(), backgroundHandler);
+                if(show_video)
+                {
+                    SurfaceTexture surfaceTexture = textureView.SurfaceTexture;
+                    surfaceTexture.SetDefaultBufferSize(previewSize.Width, previewSize.Height);
+                    Surface previewSurface = new Surface(surfaceTexture);
+                    captureRequestBuilder = cameraDevice.CreateCaptureRequest(CameraTemplate.Preview);
+                    captureRequestBuilder.AddTarget(previewSurface);
+                    captureRequestBuilder.AddTarget(imageReader.Surface);
+                    cameraDevice.CreateCaptureSession(new List<Surface>() { previewSurface, imageReader.Surface },
+                        new CameraCaptureStateCallback(), backgroundHandler);
+                }
             }
             catch (CameraAccessException e)
             {
@@ -386,7 +395,8 @@ namespace CustomVision //name of our app
             {
                 DateTime currentDate = DateTime.Now;
                 long ts = currentDate.Ticks;
-                string sdcardPath = Android.OS.Environment.ExternalStorageDirectory.Path + FOLDER_NAME + "/" + IMAGE_FOLDER_COUNT;
+                string sdcardPath = Android.OS.Environment.ExternalStorageDirectory.Path + 
+                    FOLDER_NAME + "/" + IMAGE_FOLDER_COUNT;
                 string fileName = prefix + ".  " + currentDate.TimeOfDay + ".png";
                 string FilePath = System.IO.Path.Combine(sdcardPath, fileName);
 
@@ -398,11 +408,11 @@ namespace CustomVision //name of our app
             }
         }
 
-
         public static void SaveLog(string label, DateTime currentTime, int prefix)
         {
             string msg = prefix + ".  " + currentTime.TimeOfDay + "_" + label;
-            string sdCardPath = Android.OS.Environment.ExternalStorageDirectory.Path + FOLDER_NAME + "/" + IMAGE_FOLDER_COUNT;
+            string sdCardPath = Android.OS.Environment.ExternalStorageDirectory.Path + FOLDER_NAME +
+                "/" + IMAGE_FOLDER_COUNT;
             string filePath = System.IO.Path.Combine(sdCardPath, IMAGE_FOLDER_COUNT+"log.txt");
             lock (locker)
             {
@@ -419,18 +429,29 @@ namespace CustomVision //name of our app
                 foreach (string cameraId in cameraManager.GetCameraIdList()) {
                     CameraCharacteristics cameraCharacteristics =
                             cameraManager.GetCameraCharacteristics(cameraId);
-                    if ((int)cameraCharacteristics.Get(CameraCharacteristics.LensFacing) == cameraFacing) {
-                        Android.Hardware.Camera2.Params.StreamConfigurationMap streamConfigurationMap =
-                            (Android.Hardware.Camera2.Params.StreamConfigurationMap)cameraCharacteristics.Get(
-                                CameraCharacteristics.ScalerStreamConfigurationMap);
-                        DisplayMetrics displayMetrics = Resources.DisplayMetrics;
-                        DSI_height = displayMetrics.HeightPixels;
-                        DSI_width = displayMetrics.WidthPixels;
-                        previewSize = streamConfigurationMap.GetOutputSizes((int)ImageFormatType.Jpeg)[0];
-                        SetAspectRatioTextureView(previewSize.Width, previewSize.Height);
-                        imageReader = ImageReader.NewInstance(previewSize.Width, previewSize.Height, ImageFormatType.Yuv420888, 1);
-                        imageReader.SetOnImageAvailableListener(new ImageAvailableListener(), backgroundHandler);
+                    if ((int)cameraCharacteristics.Get(CameraCharacteristics.LensFacing) ==
+                            cameraFacing)
+                        {
                         CameraId = cameraId;
+
+                        if (show_video)
+                        {
+                            Android.Hardware.Camera2.Params.StreamConfigurationMap
+                                streamConfigurationMap =
+                                (Android.Hardware.Camera2.Params.StreamConfigurationMap)
+                                cameraCharacteristics.Get(
+                                    CameraCharacteristics.ScalerStreamConfigurationMap);
+                            DisplayMetrics displayMetrics = Resources.DisplayMetrics;
+                            DSI_height = displayMetrics.HeightPixels;
+                            DSI_width = displayMetrics.WidthPixels;
+                            previewSize = streamConfigurationMap.GetOutputSizes(
+                                (int)ImageFormatType.Jpeg)[0];
+                            SetAspectRatioTextureView(previewSize.Width, previewSize.Height);
+                            imageReader = ImageReader.NewInstance(previewSize.Width, 
+                                previewSize.Height, ImageFormatType.Yuv420888, 1);
+                            imageReader.SetOnImageAvailableListener(new ImageAvailableListener(),
+                                backgroundHandler);
+                        }
                     }
                 } 
             } catch (CameraAccessException e) {
