@@ -137,8 +137,9 @@ namespace CustomVision
             {
                 CrossTextToSpeech.Current.Speak($"{orderedResults.First().Item2}");
                 // return orderedResults.First().Item2;
-                string bestResultSoFar = MainActivity.GetTopResult(labels2);
                 MainActivity.StoreResult(orderedResults.First().Item2);
+                string bestResultSoFar = MainActivity.GetTopResult(labels2);
+                //MainActivity.StoreResult(orderedResults.First().Item2);
                 if (bestResultSoFar == null)
                 {
                     return orderedResults.First().Item2;
@@ -151,7 +152,10 @@ namespace CustomVision
             }
             else
             {
-                return "unknown";
+                string bestResultSoFar = MainActivity.GetTopResult(labels2);
+                MainActivity.SaveLog("best result found: " + bestResultSoFar, DateTime.Now, prefix);
+                return bestResultSoFar;
+                //return "unknown";
             }
 
         }
