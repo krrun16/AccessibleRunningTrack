@@ -14,8 +14,11 @@ namespace CustomVision
     internal class StartActivity : AppCompatActivity
     {
         public static int PERMISSION_ALL = 0;
-        private Button startButton;
-        private Button StartButton => startButton ?? (startButton = FindViewById<Button>(Resource.Id.start_btn));
+        private Button startButton, startButtonNoVideo;
+        private Button StartButton => startButton ?? 
+            (startButton = FindViewById<Button>(Resource.Id.start_btn));
+        private Button StartButtonNoVideo => StartButtonNoVideo ?? 
+            (startButtonNoVideo = FindViewById<Button>(Resource.Id.start_btn_no_vid));
 
         private static readonly string[] permissions = {
             Manifest.Permission.WriteExternalStorage,
@@ -26,22 +29,24 @@ namespace CustomVision
         {
             base.OnCreate(savedInstanceState);
             ActivityCompat.RequestPermissions(this, permissions, PERMISSION_ALL);
-
-            SetContentView(Resource.Layout.start_btn);
+            SetContentView(Resource.Layout.StartScreen);
            
             StartButton.Click += StartButton_Click;
-             
-
-               
-            
+            StartButtonNoVideo.Click += StartButtonNoVideo_Click;
         }
 
-        private void StartButton_Click(object sender, EventArgs e) {
-            
-                Intent m_activity = new Intent(this, typeof(MainActivity));
-                StartActivity(m_activity);
-            
-            
+        private void StartButton_Click(object sender, EventArgs e)
+        {
+            Intent m_activity = new Intent(this, typeof(MainActivity));
+            m_activity.PutExtra("show_video", true);
+            StartActivity(m_activity);
+        }
+
+        private void StartButtonNoVideo_Click(object sender, EventArgs e)
+        {
+            Intent m_activity = new Intent(this, typeof(MainActivity));
+            m_activity.PutExtra("show_video", false);
+            StartActivity(m_activity);
         }
     }
 }

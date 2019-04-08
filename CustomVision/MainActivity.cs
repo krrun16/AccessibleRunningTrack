@@ -23,7 +23,6 @@ namespace CustomVision //name of our app
      */
     internal class StateCallback : CameraDevice.StateCallback
     {
-
         public StateCallback()
         {
         }
@@ -130,7 +129,6 @@ namespace CustomVision //name of our app
         private static List<string> storeWindow = new List<string>();
         private static int WINDOW_SIZE = 5;
        
-
         protected override void OnCreate(Bundle savedInstanceState)
         {
             base.OnCreate(savedInstanceState);
@@ -156,13 +154,11 @@ namespace CustomVision //name of our app
                     Directory.CreateDirectory(sdcardPath);
                 }
             }
-
         }
 
         protected override void OnResume()
         {
             base.OnResume();
-            
             OpenBackgroundThread();
             if(textureView.IsAvailable)
             {
@@ -180,7 +176,7 @@ namespace CustomVision //name of our app
 
         public static void BC_SaveImages()
         {
-            Action action = () =>
+            void action()
             {
                 try
                 {
@@ -200,8 +196,7 @@ namespace CustomVision //name of our app
                 {
 
                 }
-
-            };
+            }
 
             task = Task.Factory.StartNew(action);
             task2 = Task.Factory.StartNew(action);
@@ -234,7 +229,6 @@ namespace CustomVision //name of our app
             System.Environment.Exit(0);
         }
 
-
         private void CloseCamera()
         {
             bc.CompleteAdding();
@@ -256,7 +250,6 @@ namespace CustomVision //name of our app
                 imageReader.Close();
                 imageReader = null;
             }
-
         }
 
         public static void CreatePreviewSession()
@@ -303,7 +296,6 @@ namespace CustomVision //name of our app
                 int newWidth = DSI_width;
                 int newHeight = ((DSI_width * ResolutionWidth) / ResolutionHeight);
                 UpdateTextureViewSize(newWidth, newHeight);
-
             }
             else
             {
@@ -345,18 +337,14 @@ namespace CustomVision //name of our app
 
         public static void RecognizeImage(Bitmap rgbBitmap, int prefix)
         {
-            //string result = await Task.Run(() => imageClassifier.RecognizeImage(rgbBitmap));
-            //string result = imageClassifier.RecognizeImage1(rgbBitmap, prefix);
             if(imageClassifier.RecognizeImage1(rgbBitmap, prefix) == "straight")
             {
-                
                 string res = imageClassifier.RecognizeImage2(rgbBitmap, prefix);
                 SaveLog("Recognize image", DateTime.Now, prefix);
-
             }
             else
             {
-               // SaveLog("Curve Image", DateTime.Now, prefix);
+               SaveLog("Curve Image", DateTime.Now, prefix);
             }
         }
 
@@ -416,20 +404,9 @@ namespace CustomVision //name of our app
             string filePath = System.IO.Path.Combine(sdCardPath, IMAGE_FOLDER_COUNT+"log.txt");
             lock (locker)
             {
-                if (!File.Exists(filePath))
+                using (StreamWriter write = new StreamWriter(filePath, true))
                 {
-                    using (StreamWriter write = new StreamWriter(filePath, true))
-                    {
-                        write.Write(msg + "\n");
-                    }
-
-                }
-                else
-                {
-                    using (StreamWriter write = new StreamWriter(filePath, true))
-                    {
-                        write.Write(msg + "\n");
-                    }
+                    write.Write(msg + "\n");
                 }
             }
         }
@@ -522,7 +499,7 @@ namespace CustomVision //name of our app
 
                     if(MainActivity.cameraFacing == (int) LensFacing.Front)
                     {
-                        Log.Debug("iowa","oh no this is front camera.");
+                        Log.Debug("iowa","this is the front camera.");
                         int cx = bitmap.Width / 2;
                         int cy = bitmap.Height / 2;
                         Matrix matrix = new Matrix();
@@ -544,8 +521,6 @@ namespace CustomVision //name of our app
             }
         }
     }
-
-
 }
 
 
