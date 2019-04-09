@@ -14,6 +14,10 @@ using System.Collections.Generic;
 using Android.Media;
 using System.Threading;
 using System.Collections.Concurrent;
+using Java.Nio;
+using Android.Renderscripts;
+using Type = Android.Renderscripts.Type;
+using Android.Content;
 
 namespace CustomVision //name of our app
 {
@@ -101,6 +105,7 @@ namespace CustomVision //name of our app
     [Activity(Label = "@string/app_name", MainLauncher = false, Icon = "@mipmap/icon", Theme = "@style/MyTheme", ScreenOrientation = ScreenOrientation.Portrait)]
     public class MainActivity : AppCompatActivity, TextureView.ISurfaceTextureListener
     {
+        private static Context context;
         public static int cameraFacing;
         public static TextureView textureView;
         private static readonly string FOLDER_NAME = "/CustomVision";
@@ -133,6 +138,7 @@ namespace CustomVision //name of our app
         protected override void OnCreate(Bundle savedInstanceState)
         {
             base.OnCreate(savedInstanceState);
+            context = ApplicationContext;
             show_video = Intent.GetBooleanExtra("show_video", false);
             cameraFacing = (int)LensFacing.Back;
             string sdcardPath = Android.OS.Environment.ExternalStorageDirectory.Path + 
@@ -273,8 +279,16 @@ namespace CustomVision //name of our app
                     captureRequestBuilder = cameraDevice.CreateCaptureRequest(CameraTemplate.Preview);
                     captureRequestBuilder.AddTarget(previewSurface);
                     captureRequestBuilder.AddTarget(imageReader.Surface);
-                    cameraDevice.CreateCaptureSession(new List<Surface>() { previewSurface, imageReader.Surface },
-                        new CameraCaptureStateCallback(), backgroundHandler);
+                    cameraDevice.CreateCaptureSession(new List<Surface>() { previewSurface,
+                        imageReader.Surface }, new CameraCaptureStateCallback(), backgroundHandler);
+                } else
+                {
+                    captureRequestBuilder = cameraDevice.CreateCaptureRequest(CameraTemplate.Preview);
+                    captureRequestBuilder.AddTarget(imageReader.Surface);
+                    SurfaceTexture randomTexture = new SurfaceTexture(true);
+                    Surface randomSurface = new Surface(randomTexture);
+                    cameraDevice.CreateCaptureSession(new List<Surface>() { randomSurface,
+                        imageReader.Surface }, new CameraCaptureStateCallback(), backgroundHandler);
                 }
             }
             catch (CameraAccessException e)
@@ -408,6 +422,47 @@ namespace CustomVision //name of our app
             }
         }
 
+        // credit https://stackoverflow.com/questions/44652828/camera2-api-imageformat-yuv-420-888-results-on-rotated-image
+        public static Bitmap YUV_420_888_toRGBIntrinsics(Image image)
+        {
+            if (image == null) return null;
+
+            int W = image.Width;
+            int H = image.Height;
+
+            Image.Plane Y = image.GetPlanes()[0];
+            Image.Plane U = image.GetPlanes()[1];
+            Image.Plane V = image.GetPlanes()[2];
+
+            int Yb = Y.Buffer.Remaining();
+            int Ub = U.Buffer.Remaining();
+            int Vb = V.Buffer.Remaining();
+
+            byte[] data = new byte[Yb + Ub + Vb];
+
+            Y.Buffer.Get(data, 0, Yb);
+            V.Buffer.Get(data, Yb, Vb);
+            U.Buffer.Get(data, Yb + Vb, Ub);
+            RenderScript rs = RenderScript.Create(context);
+            ScriptIntrinsicYuvToRGB yuvToRgbIntrinsic = ScriptIntrinsicYuvToRGB.Create(
+                rs, Element.U8_4(rs));
+
+            Type.Builder yuvType = new Type.Builder(rs, Element.U8(rs)).SetX(data.Length);
+            Allocation inAll = Allocation.CreateTyped(rs, yuvType.Create());
+
+            Type.Builder rgbaType = new Type.Builder(rs, Element.RGBA_8888(rs)).SetX(W).SetY(H);
+            Allocation outAll = Allocation.CreateTyped(rs, rgbaType.Create());
+
+            Bitmap bmpout = Bitmap.CreateBitmap(W, H, Bitmap.Config.Argb8888); 
+            inAll.CopyFromUnchecked(data);
+
+            yuvToRgbIntrinsic.SetInput(inAll);
+            yuvToRgbIntrinsic.ForEach(outAll);
+            outAll.CopyTo(bmpout);
+            image.Close();
+            return bmpout;
+        }
+
         public static void SaveLog(string label, DateTime currentTime, int prefix)
         {
             string msg = prefix + ".  " + currentTime.TimeOfDay + "_" + label;
@@ -432,26 +487,28 @@ namespace CustomVision //name of our app
                     if ((int)cameraCharacteristics.Get(CameraCharacteristics.LensFacing) ==
                             cameraFacing)
                         {
+
                         CameraId = cameraId;
+                        Android.Hardware.Camera2.Params.StreamConfigurationMap 
+                            streamConfigurationMap = 
+                            (Android.Hardware.Camera2.Params.StreamConfigurationMap) 
+                            cameraCharacteristics.Get(
+                                CameraCharacteristics.ScalerStreamConfigurationMap);
+                        DisplayMetrics displayMetrics = Resources.DisplayMetrics;
+                        DSI_height = displayMetrics.HeightPixels;
+                        DSI_width = displayMetrics.WidthPixels;
+                        previewSize = streamConfigurationMap.GetOutputSizes(
+                            (int)ImageFormatType.Yuv420888)[0];
 
                         if (show_video)
                         {
-                            Android.Hardware.Camera2.Params.StreamConfigurationMap
-                                streamConfigurationMap =
-                                (Android.Hardware.Camera2.Params.StreamConfigurationMap)
-                                cameraCharacteristics.Get(
-                                    CameraCharacteristics.ScalerStreamConfigurationMap);
-                            DisplayMetrics displayMetrics = Resources.DisplayMetrics;
-                            DSI_height = displayMetrics.HeightPixels;
-                            DSI_width = displayMetrics.WidthPixels;
-                            previewSize = streamConfigurationMap.GetOutputSizes(
-                                (int)ImageFormatType.Jpeg)[0];
                             SetAspectRatioTextureView(previewSize.Width, previewSize.Height);
-                            imageReader = ImageReader.NewInstance(previewSize.Width, 
-                                previewSize.Height, ImageFormatType.Yuv420888, 1);
-                            imageReader.SetOnImageAvailableListener(new ImageAvailableListener(),
-                                backgroundHandler);
                         }
+
+                        imageReader = ImageReader.NewInstance(previewSize.Width, previewSize.Height, 
+                            ImageFormatType.Yuv420888, 1);
+                        imageReader.SetOnImageAvailableListener(new ImageAvailableListener(),
+                            backgroundHandler);
                     }
                 } 
             } catch (CameraAccessException e) {
@@ -474,6 +531,7 @@ namespace CustomVision //name of our app
                 e.PrintStackTrace();
             }
         }
+
     }
 
     public class BitmapPrefix
@@ -514,32 +572,47 @@ namespace CustomVision //name of our app
                     {
                         return;
                     }
-                    //textureview is the region of the screen that contains the camera, so get the picture with the same dimensions as the screen
-                    Bitmap bitmap = MainActivity.textureView.GetBitmap(MainActivity.textureView.Width, MainActivity.textureView.Height);
-                    //retrieve the input size from the ImageClassifier
-                    int inputsize = MainActivity.imageClassifier.getInputSize();
-                    //resize the bitmap
 
-                    if(MainActivity.cameraFacing == (int) LensFacing.Front)
+                    Bitmap bitmap = null;
+                    if(MainActivity.show_video)
                     {
-                        Log.Debug("iowa","this is the front camera.");
-                        int cx = bitmap.Width / 2;
-                        int cy = bitmap.Height / 2;
-                        Matrix matrix = new Matrix();
-                        matrix.PostScale(-1, 1, cx, cy);
-                        bitmap = Bitmap.CreateBitmap(bitmap, 0, 0, bitmap.Width, bitmap.Height, matrix, true);
-                    }
-                    Bitmap scaledBitmap = Bitmap.CreateScaledBitmap(bitmap,inputsize, inputsize, false);
-                    Bitmap resizedBitmap = scaledBitmap.Copy(Bitmap.Config.Argb8888, false);
-                    MainActivity.SaveLog("created bitmap", DateTime.Now, prefix); // write when the bitmap is created to the log
-                    image.Close(); // This closes the image so the phone no longer has to hold onto it, otherwise it will slow the system and stop collecting pictures
-                    BitmapPrefix bitmapPrefix = new BitmapPrefix(resizedBitmap, prefix); // **TODO
-                    if (!MainActivity.bc.IsAddingCompleted) // **TODO
+                        // textureview is the region of the screen that contains the camera, 
+                        // so get the picture with the same dimensions as the screen
+                        bitmap = MainActivity.textureView.GetBitmap(MainActivity.textureView.Width, 
+                            MainActivity.textureView.Height);
+                        if (MainActivity.cameraFacing == (int)LensFacing.Front)
+                        {
+                            Log.Debug("iowa", "this is the front camera.");
+                            int cx = bitmap.Width / 2;
+                            int cy = bitmap.Height / 2;
+                            Matrix matrix = new Matrix();
+                            matrix.PostScale(-1, 1, cx, cy);
+                            bitmap = Bitmap.CreateBitmap(bitmap, 0, 0, bitmap.Width, bitmap.Height, matrix, true);
+                        }
+                    } else
                     {
-                        MainActivity.bc.Add(bitmapPrefix); // **TODO
-                        MainActivity.RecognizeImage(resizedBitmap, prefix); // call the classifier to recognize the resizedimage
+                        bitmap = MainActivity.YUV_420_888_toRGBIntrinsics(image);
                     }
-                }
+
+                    if (bitmap != null)
+                    {
+                        //retrieve the input size from the ImageClassifier
+                        int inputsize = MainActivity.imageClassifier.getInputSize();
+
+                        //resize the bitmap
+                        Bitmap scaledBitmap = Bitmap.CreateScaledBitmap(bitmap, inputsize, inputsize, false);
+                        Bitmap resizedBitmap = scaledBitmap.Copy(Bitmap.Config.Argb8888, false);
+                        MainActivity.SaveLog("created bitmap", DateTime.Now, prefix); // write when the bitmap is created to the log
+                        BitmapPrefix bitmapPrefix = new BitmapPrefix(resizedBitmap, prefix); // **TODO
+                        if (!MainActivity.bc.IsAddingCompleted) // **TODO
+                        {
+                            MainActivity.bc.Add(bitmapPrefix); // **TODO
+                            MainActivity.RecognizeImage(resizedBitmap, prefix); // call the classifier to recognize the resizedimage
+                        }
+                    }
+                    image.Close(); // This closes the image so the phone no longer has to hold onto 
+                    // it, otherwise it will slow the system and stop collecting pictures
+                }   
                 Interlocked.Exchange(ref MainActivity.canProcessImage, 1); // equivalent to canProcessImage = 1; meaning anyone else can come with their image
             }
         }
