@@ -285,10 +285,7 @@ namespace CustomVision //name of our app
                 {
                     captureRequestBuilder = cameraDevice.CreateCaptureRequest(CameraTemplate.Preview);
                     captureRequestBuilder.AddTarget(imageReader.Surface);
-                    SurfaceTexture randomTexture = new SurfaceTexture(true);
-                    Surface randomSurface = new Surface(randomTexture);
-                    cameraDevice.CreateCaptureSession(new List<Surface>() { randomSurface,
-                        imageReader.Surface }, new CameraCaptureStateCallback(), backgroundHandler);
+                    cameraDevice.CreateCaptureSession(new List<Surface>() { imageReader.Surface }, new CameraCaptureStateCallback(), backgroundHandler);
                 }
             }
             catch (CameraAccessException e)
@@ -506,7 +503,7 @@ namespace CustomVision //name of our app
                         }
 
                         imageReader = ImageReader.NewInstance(previewSize.Width, previewSize.Height, 
-                            ImageFormatType.Yuv420888, 1);
+                            ImageFormatType.Jpeg, 1);
                         imageReader.SetOnImageAvailableListener(new ImageAvailableListener(),
                             backgroundHandler);
                     }
@@ -591,7 +588,24 @@ namespace CustomVision //name of our app
                         }
                     } else
                     {
-                        bitmap = MainActivity.YUV_420_888_toRGBIntrinsics(image);
+                        //yuv420888 update line 506 as well
+                        //bitmap = MainActivity.YUV_420_888_toRGBIntrinsics(image);
+                        ByteBuffer buffer = image.GetPlanes()[0].Buffer;
+                        byte[] bytes = new byte[buffer.Capacity()];
+                        buffer.Get(bytes);
+                        bitmap = BitmapFactory.DecodeByteArray(bytes, 0, bytes.Length, 
+                            null);
+
+                        Log.Debug("iowa", "this is the front camera.");
+                        int cx = bitmap.Width / 2;
+                        int cy = bitmap.Height / 2;
+                        Matrix matrix = new Matrix();
+                        if (MainActivity.cameraFacing == (int)LensFacing.Front)
+                        {
+                            matrix.PostScale(-1, 1, cx, cy);
+                        }
+                        matrix.PostRotate(90);
+                        bitmap = Bitmap.CreateBitmap(bitmap, 0, 0, bitmap.Width, bitmap.Height, matrix, true);
                     }
 
                     if (bitmap != null)
