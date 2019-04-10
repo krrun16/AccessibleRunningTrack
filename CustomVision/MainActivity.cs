@@ -503,7 +503,7 @@ namespace CustomVision //name of our app
                         }
 
                         imageReader = ImageReader.NewInstance(previewSize.Width, previewSize.Height, 
-                            ImageFormatType.Jpeg, 1);
+                            ImageFormatType.Yuv420888, 1);
                         imageReader.SetOnImageAvailableListener(new ImageAvailableListener(),
                             backgroundHandler);
                     }
@@ -589,12 +589,12 @@ namespace CustomVision //name of our app
                     } else
                     {
                         //yuv420888 update line 506 as well
-                        //bitmap = MainActivity.YUV_420_888_toRGBIntrinsics(image);
-                        ByteBuffer buffer = image.GetPlanes()[0].Buffer;
+                        bitmap = MainActivity.YUV_420_888_toRGBIntrinsics(image);
+                        /*ByteBuffer buffer = image.GetPlanes()[0].Buffer;
                         byte[] bytes = new byte[buffer.Capacity()];
                         buffer.Get(bytes);
                         bitmap = BitmapFactory.DecodeByteArray(bytes, 0, bytes.Length, 
-                            null);
+                            null);*/
 
                         Log.Debug("iowa", "this is the front camera.");
                         int cx = bitmap.Width / 2;
