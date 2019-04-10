@@ -588,8 +588,10 @@ namespace CustomVision //name of our app
                         }
                     } else
                     {
+                        MainActivity.SaveLog("begin bitmap conversion", DateTime.Now, prefix); // write when the photo can be processed to the log
                         //yuv420888 update line 506 as well
                         bitmap = MainActivity.YUV_420_888_toRGBIntrinsics(image);
+                        MainActivity.SaveLog("converted from yuv to bmp", DateTime.Now, prefix); // write when the photo can be processed to the log
                         /*ByteBuffer buffer = image.GetPlanes()[0].Buffer;
                         byte[] bytes = new byte[buffer.Capacity()];
                         buffer.Get(bytes);
@@ -605,7 +607,9 @@ namespace CustomVision //name of our app
                             matrix.PostScale(-1, 1, cx, cy);
                         }
                         matrix.PostRotate(90);
+                        MainActivity.SaveLog("rotated photo", DateTime.Now, prefix); // write when the photo can be processed to the log
                         bitmap = Bitmap.CreateBitmap(bitmap, 0, 0, bitmap.Width, bitmap.Height, matrix, true);
+                        MainActivity.SaveLog("create resized bitmap", DateTime.Now, prefix); // write when the photo can be processed to the log
                     }
 
                     if (bitmap != null)
