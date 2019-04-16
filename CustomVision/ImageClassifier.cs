@@ -92,16 +92,9 @@ namespace CustomVision
                     + orderedResults.ElementAt(i).Item1 + "; ";
             }
             MainActivity.SaveLog(orderedResultsMsg, DateTime.Now, prefix);
-            if (orderedResults.First().Item1 > .8)
-            {
+           
                 return orderedResults.First().Item2;
-            } else
-            {
-                return "unknown";
-            }
-            
         }
-
         public string RecognizeImage2(Bitmap bitmap, int prefix)
         {
             MainActivity.SaveLog("start method", DateTime.Now, prefix);
@@ -131,31 +124,18 @@ namespace CustomVision
                     + orderedResults.ElementAt(i).Item1 + "; ";
             }
             MainActivity.SaveLog(orderedResultsMsg, DateTime.Now, prefix);
-            if (orderedResults.First().Item1 > .8)
+            //CrossTextToSpeech.Current.Speak($"{orderedResults.First().Item2}");
+            MainActivity.StoreResult(orderedResults.First().Item2);
+            string bestResultSoFar = MainActivity.GetTopResult(labels2);
+            if (bestResultSoFar == null)
             {
-                CrossTextToSpeech.Current.Speak($"{orderedResults.First().Item2}");
-                // return orderedResults.First().Item2;
-                MainActivity.StoreResult(orderedResults.First().Item2);
-                string bestResultSoFar = MainActivity.GetTopResult(labels2);
-                //MainActivity.StoreResult(orderedResults.First().Item2);
-                if (bestResultSoFar == null)
-                {
-                    return orderedResults.First().Item2;
-                }
-                else
-                {
-                    MainActivity.SaveLog("best result found: " + bestResultSoFar, DateTime.Now, prefix);
-                    return bestResultSoFar;
-                }
+                return orderedResults.First().Item2;
             }
             else
             {
-                string bestResultSoFar = MainActivity.GetTopResult(labels2);
                 MainActivity.SaveLog("best result found: " + bestResultSoFar, DateTime.Now, prefix);
                 return bestResultSoFar;
-                //return "unknown";
             }
-
         }
 
         private static float[] GetBitmapPixels(Bitmap bitmap, int prefix, bool saveImage, Boolean hasNormalization)
@@ -188,13 +168,6 @@ namespace CustomVision
                         floatValues[(i * 3) + 1] = ((val >> 8) & 0xFF) - IMAGE_MEAN_G;
                         floatValues[(i * 3) + 2] = ((val >> 16) & 0xFF) - IMAGE_MEAN_R;
                     }
-
-                    //bitmap.Recycle();
-              //}
-
-                //bitmap.Recycle();
-            //}
-
             return floatValues;
         }
     }
