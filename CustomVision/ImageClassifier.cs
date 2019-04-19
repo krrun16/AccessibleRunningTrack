@@ -124,7 +124,7 @@ namespace CustomVision
                     + orderedResults.ElementAt(i).Item1 + "; ";
             }
             MainActivity.SaveLog(orderedResultsMsg, DateTime.Now, prefix);
-            //CrossTextToSpeech.Current.Speak($"{orderedResults.First().Item2}");
+            CrossTextToSpeech.Current.Speak($"{orderedResults.First().Item2}");
             MainActivity.StoreResult(orderedResults.First().Item2);
             string bestResultSoFar = MainActivity.GetTopResult(labels2);
             if (bestResultSoFar == null)
