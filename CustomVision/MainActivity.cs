@@ -18,8 +18,6 @@ using Java.Nio;
 using Android.Renderscripts;
 using Type = Android.Renderscripts.Type;
 using Android.Content;
-using Android.Speech.Tts;
-using Android.Runtime;
 
 namespace CustomVision //name of our app
 {
@@ -105,7 +103,7 @@ namespace CustomVision //name of our app
     }
 
     [Activity(Label = "@string/app_name", MainLauncher = false, Icon = "@mipmap/icon", Theme = "@style/MyTheme", ScreenOrientation = ScreenOrientation.Portrait)]
-    public class MainActivity : AppCompatActivity, TextureView.ISurfaceTextureListener, TextToSpeech.IOnInitListener
+    public class MainActivity : AppCompatActivity, TextureView.ISurfaceTextureListener
     {
         private static Context context;
         public static int cameraFacing;
@@ -136,7 +134,6 @@ namespace CustomVision //name of our app
         };
         private static List<string> storeWindow = new List<string>();
         private static readonly int WINDOW_SIZE = 5;
-        private static TextToSpeech tts;
        
         protected override void OnCreate(Bundle savedInstanceState)
         {
@@ -170,12 +167,6 @@ namespace CustomVision //name of our app
                     Directory.CreateDirectory(sdcardPath);
                 }
             }
-            tts = new TextToSpeech(this, this);
-        }
-
-        public static void Speak(String text)
-        {
-            tts.Speak(text, QueueMode.Flush, null, null);
         }
 
         protected override void OnResume()
@@ -538,11 +529,6 @@ namespace CustomVision //name of our app
             }
         }
 
-        public void OnInit([GeneratedEnum] OperationResult status)
-        {
-            if (!status.Equals(OperationResult.Success))
-                Log.Error("Uiowa", "Text to speech not initialized!");
-        }
     }
 
     public class BitmapPrefix
