@@ -18,6 +18,8 @@ using Java.Nio;
 using Android.Renderscripts;
 using Type = Android.Renderscripts.Type;
 using Android.Content;
+using Android.Speech.Tts;
+using Android.Runtime;
 
 namespace CustomVision //name of our app
 {
@@ -103,7 +105,7 @@ namespace CustomVision //name of our app
     }
 
     [Activity(Label = "@string/app_name", MainLauncher = false, Icon = "@mipmap/icon", Theme = "@style/MyTheme", ScreenOrientation = ScreenOrientation.Portrait)]
-    public class MainActivity : AppCompatActivity, TextureView.ISurfaceTextureListener
+    public class MainActivity : AppCompatActivity, TextureView.ISurfaceTextureListener, TextToSpeech.IOnInitListener
     {
         private static Context context;
         public static int cameraFacing;
@@ -127,12 +129,14 @@ namespace CustomVision //name of our app
         private static Task task2;
         private static readonly object locker = new object();
         public static bool show_video = false;
+        public static string PreviousText = "noLabel";
 
         private static readonly string[] permissions = {
             Manifest.Permission.WriteExternalStorage,
             Manifest.Permission.Camera
         };
         private static List<string> storeWindow = new List<string>();
+        private static TextToSpeech tts;
         private static readonly int WINDOW_SIZE = 5;
        
         protected override void OnCreate(Bundle savedInstanceState)
@@ -166,7 +170,21 @@ namespace CustomVision //name of our app
                 {
                     Directory.CreateDirectory(sdcardPath);
                 }
+                tts = new TextToSpeech(this, this);
             }
+        }
+
+        public static void Speak(String CurrentText)
+        {
+            if (PreviousText == CurrentText)
+            {
+                tts.Speak(CurrentText, QueueMode.Add, null, null);
+            }
+            else
+            {
+                tts.Speak(CurrentText, QueueMode.Flush, null, null);
+            }
+            PreviousText = CurrentText;
         }
 
         protected override void OnResume()
@@ -529,6 +547,11 @@ namespace CustomVision //name of our app
             }
         }
 
+        public void OnInit([GeneratedEnum] OperationResult status)
+        {
+            if (!status.Equals(OperationResult.Success))
+                Log.Error("Uiowa", "Text to speech not initialized!");
+        }
     }
 
     public class BitmapPrefix

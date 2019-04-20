@@ -124,16 +124,19 @@ namespace CustomVision
                     + orderedResults.ElementAt(i).Item1 + "; ";
             }
             MainActivity.SaveLog(orderedResultsMsg, DateTime.Now, prefix);
-            CrossTextToSpeech.Current.Speak($"{orderedResults.First().Item2}");
+            //CrossTextToSpeech.Current.Speak($"{orderedResults.First().Item2}");
+            
             MainActivity.StoreResult(orderedResults.First().Item2);
             string bestResultSoFar = MainActivity.GetTopResult(labels2);
             if (bestResultSoFar == null)
             {
+                MainActivity.Speak(orderedResults.First().Item2);
                 return orderedResults.First().Item2;
             }
             else
             {
                 MainActivity.SaveLog("best result found: " + bestResultSoFar, DateTime.Now, prefix);
+                MainActivity.Speak(bestResultSoFar);
                 return bestResultSoFar;
             }
         }
