@@ -237,6 +237,8 @@ namespace CustomVision //name of our app
         protected override void OnDestroy()
         {
             base.OnDestroy();
+            tts.Stop();
+            tts.Shutdown();
             CloseCamera();
             CloseBackgroundThread();
             FinishAffinity();
@@ -245,7 +247,10 @@ namespace CustomVision //name of our app
 
         protected override void OnStop()
         {
+            
             base.OnStop();
+            tts.Stop();
+            tts.Shutdown();
             CloseCamera();
             CloseBackgroundThread();
             FinishAffinity();
@@ -255,6 +260,11 @@ namespace CustomVision //name of our app
         protected override void OnPause()
         {
             CloseCamera();
+            if (tts != null)
+            {
+                tts.Stop();
+                tts.Shutdown();
+            }
             CloseBackgroundThread();
             base.OnPause();
             FinishAffinity();
