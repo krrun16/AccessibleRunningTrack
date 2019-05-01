@@ -37,7 +37,7 @@ namespace CustomVision
            
             StartButton.Click += StartButton_Click;
 
-            /*AssetManager assetManager = Application.Context.Assets;
+            AssetManager assetManager = Application.Context.Assets;
             string[] assetsList = assetManager.List("");
             foreach (string fileName in assetsList)
             {
@@ -47,9 +47,10 @@ namespace CustomVision
                     string result = imageTestClassifier.RecognizeImage2(test, fileName);
                     Log(result, DateTime.Now, fileName);
                 }
-            }*/
+            }
 
-            MediaMetadataRetriever mRetriever = new MediaMetadataRetriever();
+            /* Testing video footage at periodic time stamps
+             * MediaMetadataRetriever mRetriever = new MediaMetadataRetriever();
             AssetManager assetManager = Application.Context.Assets;
             AssetFileDescriptor afd = assetManager.OpenFd("test2_rotated.mp4");
             mRetriever.SetDataSource(afd.FileDescriptor, afd.StartOffset, afd.Length);
@@ -66,7 +67,7 @@ namespace CustomVision
                 byte[] png = byteArrayOutputStream.ToArray();
                 SaveTestBitmap(png, "" + i);
                 Log(result, DateTime.Now, "" + i);
-            }
+            }*/
         }
 
         public static void SaveTestBitmap(byte[] data, string prefix)
