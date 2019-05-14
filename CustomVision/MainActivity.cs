@@ -21,6 +21,7 @@ using Android.Content;
 using Android.Speech.Tts;
 using Android.Runtime;
 
+
 namespace CustomVision //name of our app
 {
     /* We never call this code explictly
@@ -105,7 +106,9 @@ namespace CustomVision //name of our app
     }
 
     [Activity(Label = "@string/app_name", MainLauncher = false, Icon = "@mipmap/icon", Theme = "@style/MyTheme", ScreenOrientation = ScreenOrientation.Portrait)]
-    public class MainActivity : AppCompatActivity, TextureView.ISurfaceTextureListener, TextToSpeech.IOnInitListener
+    public class MainActivity : AppCompatActivity, TextureView.ISurfaceTextureListener, TextToSpeech.IOnInitListener,
+        Android.Hardware.ISensorEventListener
+
     {
         private static Context context;
         public static int cameraFacing;
@@ -138,13 +141,17 @@ namespace CustomVision //name of our app
         private static List<string> storeWindow = new List<string>();
         private static TextToSpeech tts;
         private static readonly int WINDOW_SIZE = 5;
-       
+
+        static readonly object _syncLock = new object();
+        private Android.Hardware.SensorManager _sensorManager;
+
         protected override void OnCreate(Bundle savedInstanceState)
         {
             base.OnCreate(savedInstanceState);
             context = ApplicationContext;
             show_video = Intent.GetBooleanExtra("show_video", false);
             cameraFacing = (int)LensFacing.Back;
+            _sensorManager = (Android.Hardware.SensorManager)GetSystemService(SensorService);
             string sdcardPath = Android.OS.Environment.ExternalStorageDirectory.Path + 
                 FOLDER_NAME + "/" + IMAGE_FOLDER_COUNT;
             if (show_video)
@@ -191,7 +198,8 @@ namespace CustomVision //name of our app
         {
             base.OnResume();
             OpenBackgroundThread();
-            if(show_video && textureView.IsAvailable || !show_video)
+            _sensorManager.RegisterListener(this,_sensorManager.GetDefaultSensor(Android.Hardware.SensorType.Gyroscope), Android.Hardware.SensorDelay.Normal);
+            if (show_video && textureView.IsAvailable || !show_video)
             {
                 if (cameraDevice == null)
                 {
@@ -260,6 +268,7 @@ namespace CustomVision //name of our app
         protected override void OnPause()
         {
             CloseCamera();
+            _sensorManager.UnregisterListener(this);
             if (tts != null)
             {
                 tts.Stop();
@@ -561,6 +570,23 @@ namespace CustomVision //name of our app
         {
             if (!status.Equals(OperationResult.Success))
                 Log.Error("Uiowa", "Text to speech not initialized!");
+        }
+
+        public void OnAccuracyChanged(Android.Hardware.Sensor sensor, [GeneratedEnum] Android.Hardware.SensorStatus accuracy)
+        {
+            
+        }
+
+        public void OnSensorChanged(Android.Hardware.SensorEvent e)
+        {
+            lock (_syncLock)
+            {
+                float x = (float)Java.Lang.Math.ToDegrees(e.Values[0]);
+                float y = (float)Java.Lang.Math.ToDegrees(e.Values[1]);
+                float z = (float)Java.Lang.Math.ToDegrees(e.Values[2]);
+                Log.Debug("UIOWA", "x:" + x + "  y:" + y + "  z:" + z);
+            }
+           
         }
     }
 
