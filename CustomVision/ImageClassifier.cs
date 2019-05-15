@@ -133,8 +133,7 @@ namespace CustomVision
                     + orderedResults.ElementAt(i).Item1 + "; ";
             }
             StartActivity.Log(orderedResultsMsg, DateTime.Now, prefix);
-            if (orderedResults.First().Item1 > .8)
-            {
+            
                 CrossTextToSpeech.Current.Speak($"{orderedResults.First().Item2}");
                 // return orderedResults.First().Item2;
                 string bestResultSoFar = MainActivity.GetTopResult(labels2);
@@ -148,11 +147,8 @@ namespace CustomVision
                     StartActivity.Log("best result found: " + bestResultSoFar, DateTime.Now, prefix);
                     return bestResultSoFar;
                 }
-            }
-            else
-            {
-                return "unknown";
-            }
+            
+          
 
         }
 

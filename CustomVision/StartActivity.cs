@@ -44,7 +44,7 @@ namespace CustomVision
                 if (fileName.Contains(".png"))
                 {
                     Bitmap test = getBitmapFromAssets(fileName);
-                    string result = imageTestClassifier.RecognizeImage2(test, fileName);
+                    string result = imageTestClassifier.RecognizeImage1(test, fileName);
                     Log(result, DateTime.Now, fileName);
                 }
             }
@@ -101,7 +101,7 @@ namespace CustomVision
         {
             string msg = prefix + ".  " + currentTime.TimeOfDay + "_" + label;
             string sdCardPath = Android.OS.Environment.ExternalStorageDirectory.Path + "/CustomVision";
-            string filePath = System.IO.Path.Combine(sdCardPath, "imagetest.txt");
+            string filePath = System.IO.Path.Combine(sdCardPath, "curveTest.txt");
             lock (locker)
             {
                 using (StreamWriter write = new StreamWriter(filePath, true))
