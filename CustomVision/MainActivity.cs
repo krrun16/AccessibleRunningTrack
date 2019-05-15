@@ -143,7 +143,17 @@ namespace CustomVision //name of our app
         private static readonly int WINDOW_SIZE = 5;
 
         static readonly object _syncLock = new object();
-        private Android.Hardware.SensorManager _sensorManager;
+        private Android.Hardware.SensorManager sensorManager;
+        private Android.Hardware.Sensor gsensor;
+        private Android.Hardware.Sensor msensor;
+
+        private float[] mGravity = new float[3];
+        private float[] mGeomagnetic = new float[3];
+        private float[] R = new float[9];
+        private float[] I = new float[9];
+
+        private float azimuth;
+        //private float azimuthFix;
 
         protected override void OnCreate(Bundle savedInstanceState)
         {
@@ -151,7 +161,10 @@ namespace CustomVision //name of our app
             context = ApplicationContext;
             show_video = Intent.GetBooleanExtra("show_video", false);
             cameraFacing = (int)LensFacing.Back;
-            _sensorManager = (Android.Hardware.SensorManager)GetSystemService(SensorService);
+            sensorManager = (Android.Hardware.SensorManager)GetSystemService(SensorService);
+            gsensor = sensorManager.GetDefaultSensor(Android.Hardware.SensorType.Accelerometer);
+            msensor = sensorManager.GetDefaultSensor(Android.Hardware.SensorType.MagneticField);
+
             string sdcardPath = Android.OS.Environment.ExternalStorageDirectory.Path + 
                 FOLDER_NAME + "/" + IMAGE_FOLDER_COUNT;
             if (show_video)
@@ -198,7 +211,10 @@ namespace CustomVision //name of our app
         {
             base.OnResume();
             OpenBackgroundThread();
-            _sensorManager.RegisterListener(this,_sensorManager.GetDefaultSensor(Android.Hardware.SensorType.Gyroscope), Android.Hardware.SensorDelay.Normal);
+            //sensorManager.RegisterListener(this,sensorManager.GetDefaultSensor(Android.Hardware.SensorType.Orientation), Android.Hardware.SensorDelay.Normal);
+            sensorManager.RegisterListener(this, gsensor, Android.Hardware.SensorDelay.Normal);
+            sensorManager.RegisterListener(this, msensor, Android.Hardware.SensorDelay.Normal);
+
             if (show_video && textureView.IsAvailable || !show_video)
             {
                 if (cameraDevice == null)
@@ -213,6 +229,67 @@ namespace CustomVision //name of our app
             }
         }
 
+
+                public void OnAccuracyChanged(Android.Hardware.Sensor sensor, [GeneratedEnum] Android.Hardware.SensorStatus accuracy)
+        {
+            
+        }
+
+        public void OnSensorChanged(Android.Hardware.SensorEvent e)
+        {
+            float alpha = 0.97f;
+
+            lock (_syncLock)
+            {
+                if (e.Sensor.Type == Android.Hardware.SensorType.Accelerometer)
+                {
+
+                    mGravity[0] = alpha * mGravity[0] + (1 - alpha)
+                            * e.Values[0];
+                    mGravity[1] = alpha * mGravity[1] + (1 - alpha)
+                            * e.Values[1];
+                    mGravity[2] = alpha * mGravity[2] + (1 - alpha)
+                            * e.Values[2];
+
+                    // mGravity = event.values;
+
+                    // Log.e(TAG, Float.toString(mGravity[0]));
+                }
+
+                if (e.Sensor.Type == Android.Hardware.SensorType.MagneticField)
+                {
+                    // mGeomagnetic = event.values;
+
+                    mGeomagnetic[0] = alpha * mGeomagnetic[0] + (1 - alpha)
+                                * e.Values[0];
+                    mGeomagnetic[1] = alpha * mGeomagnetic[1] + (1 - alpha)
+                                * e.Values[1];
+                    mGeomagnetic[2] = alpha * mGeomagnetic[2] + (1 - alpha)
+                                * e.Values[2];
+                        // Log.e(TAG, Float.toString(event.values[0]));
+
+                }
+
+                bool success = Android.Hardware.SensorManager.GetRotationMatrix(R, I, mGravity,
+                        mGeomagnetic);
+                if (success)
+                {
+                    float[] orientation = new float[3];
+                        Android.Hardware.SensorManager.GetOrientation(R, orientation);
+                        // Log.d(TAG, "azimuth (rad): " + azimuth);
+                    azimuth = (float)Java.Lang.Math.ToDegrees(orientation[0]); // orientation
+                    float pitch = (float)Java.Lang.Math.ToDegrees(orientation[1]);
+
+                    // Pitch scaling
+                    if (pitch < -90) pitch+= (-2 * (90 + pitch));
+                    else if (pitch > 90) pitch += (2 * (90 - pitch));
+                    azimuth = (azimuth  + 360) % 360;
+                    //Log.Debug("IOWA", "azimuth (deg): " + azimuth);
+                    Log.Debug("IOWA", "pitch (deg): " + pitch);
+                }
+            }
+        
+        }
         public static void BC_SaveImages()
         {
             void action()
@@ -268,7 +345,7 @@ namespace CustomVision //name of our app
         protected override void OnPause()
         {
             CloseCamera();
-            _sensorManager.UnregisterListener(this);
+            sensorManager.UnregisterListener(this);
             if (tts != null)
             {
                 tts.Stop();
@@ -572,22 +649,7 @@ namespace CustomVision //name of our app
                 Log.Error("Uiowa", "Text to speech not initialized!");
         }
 
-        public void OnAccuracyChanged(Android.Hardware.Sensor sensor, [GeneratedEnum] Android.Hardware.SensorStatus accuracy)
-        {
-            
-        }
-
-        public void OnSensorChanged(Android.Hardware.SensorEvent e)
-        {
-            lock (_syncLock)
-            {
-                float x = (float)Java.Lang.Math.ToDegrees(e.Values[0]);
-                float y = (float)Java.Lang.Math.ToDegrees(e.Values[1]);
-                float z = (float)Java.Lang.Math.ToDegrees(e.Values[2]);
-                Log.Debug("UIOWA", "x:" + x + "  y:" + y + "  z:" + z);
-            }
-           
-        }
+        
     }
 
     public class BitmapPrefix
