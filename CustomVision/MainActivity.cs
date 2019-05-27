@@ -20,6 +20,10 @@ using Type = Android.Renderscripts.Type;
 using Android.Content;
 using Android.Speech.Tts;
 using Android.Runtime;
+using Org.Opencv.Android;
+using Org.Opencv.Core;
+using Org.Opencv.Imgproc;
+using Size = Org.Opencv.Core.Size;
 
 namespace CustomVision //name of our app
 {
@@ -105,7 +109,7 @@ namespace CustomVision //name of our app
     }
 
     [Activity(Label = "@string/app_name", MainLauncher = false, Icon = "@mipmap/icon", Theme = "@style/MyTheme", ScreenOrientation = ScreenOrientation.Portrait)]
-    public class MainActivity : AppCompatActivity, TextureView.ISurfaceTextureListener, TextToSpeech.IOnInitListener
+    public class MainActivity : AppCompatActivity, TextureView.ISurfaceTextureListener, TextToSpeech.IOnInitListener, ILoaderCallbackInterface
     {
         private static Context context;
         public static int cameraFacing;
@@ -113,7 +117,7 @@ namespace CustomVision //name of our app
         private static readonly string FOLDER_NAME = "/CustomVision";
         private static int IMAGE_FOLDER_COUNT = 1;
         public static readonly ImageClassifier imageClassifier = new ImageClassifier();
-        public static Size previewSize;
+        public static Android.Util.Size previewSize;
         public static ImageReader imageReader;
         internal static CameraDevice cameraDevice;
         private HandlerThread backgroundThread;
@@ -190,6 +194,16 @@ namespace CustomVision //name of our app
         protected override void OnResume()
         {
             base.OnResume();
+            if (!OpenCVLoader.InitDebug())
+            {
+                Log.Debug("Iowa", "Internal OpenCV library not found. Using OpenCV Manager for initialization");
+                OpenCVLoader.InitAsync(OpenCVLoader.OpencvVersion300, this, this);
+            }
+            else
+            {
+                Log.Debug("Iowa", "OpenCV library found inside package. Using it!");
+                OnManagerConnected(LoaderCallbackInterface.Success);
+            }
             OpenBackgroundThread();
             if(show_video && textureView.IsAvailable || !show_video)
             {
@@ -562,6 +576,24 @@ namespace CustomVision //name of our app
             if (!status.Equals(OperationResult.Success))
                 Log.Error("Uiowa", "Text to speech not initialized!");
         }
+
+        public void OnManagerConnected(int p0)
+        {
+            switch (p0)
+            {
+                case LoaderCallbackInterface.Success:
+                    Log.Debug("Iowa", "OpenCV loaded successfully");
+                    
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        public void OnPackageInstall(int p0, IInstallCallbackInterface p1)
+        {
+            
+        }
     }
 
     public class BitmapPrefix
@@ -653,6 +685,19 @@ namespace CustomVision //name of our app
                         //resize the bitmap
                         Bitmap scaledBitmap = Bitmap.CreateScaledBitmap(bitmap, inputsize, inputsize, false);
                         Bitmap resizedBitmap = scaledBitmap.Copy(Bitmap.Config.Argb8888, false);
+
+                        Mat rgba = new Mat();
+                        Mat mIntermediateMat = new Mat();
+                        Utils.BitmapToMat(resizedBitmap, rgba);
+                        Size ksize = new Size(3, 3);
+                        Imgproc.GaussianBlur(rgba, rgba, ksize, 0);
+                        //Mat rgbaInnerWindow = rgba.Submat(rgba.Height()-2*rgba.Height()/8, top + height, left, left + width);
+                        Imgproc.Canny(rgba, mIntermediateMat, 80, 90);
+                        Imgproc.CvtColor(mIntermediateMat, rgba, Imgproc.ColorGray2bgra, 4);
+                        rgba.Release();
+                        Utils.MatToBitmap(mIntermediateMat, resizedBitmap);
+
+
                         MainActivity.SaveLog("created bitmap", DateTime.Now, prefix); // write when the bitmap is created to the log
                         BitmapPrefix bitmapPrefix = new BitmapPrefix(resizedBitmap, prefix); // **TODO
                         if (!MainActivity.bc.IsAddingCompleted) // **TODO
