@@ -517,6 +517,22 @@ namespace CustomVision //name of our app
             }
         }
 
+
+        public static void SaveLog_thres(double label, DateTime currentTime, int prefix)
+        {
+            string msg = prefix + ".  " + currentTime.TimeOfDay + "_" + label;
+            string sdCardPath = Android.OS.Environment.ExternalStorageDirectory.Path + FOLDER_NAME +
+                "/" + IMAGE_FOLDER_COUNT;
+            string filePath = System.IO.Path.Combine(sdCardPath,"A_threslog.txt");
+            lock (locker)
+            {
+                using (StreamWriter write = new StreamWriter(filePath, true))
+                {
+                    write.Write(msg + "\n");
+                }
+            }
+        }
+
         private void SetUpCamera(CameraManager cameraManager)
         {
             try {
@@ -618,6 +634,31 @@ namespace CustomVision //name of our app
         private int PREFIX = 0;
         // We don't explicitly call this code
         // If there is a picture available...
+
+        private Mat DetectColor(Mat img)
+        {
+            
+            Mat mask1 = new Mat();
+            Mat mask2 = new Mat();
+            Mat hsvImg = new Mat();
+            Imgproc.CvtColor(img, hsvImg, Imgproc.ColorRgb2hsv,0);
+            Core.InRange(hsvImg, new Scalar(0, 50, 20)/*BGRA*/,new Scalar(5,255, 255), mask1);
+            Core.InRange(hsvImg, new Scalar(175, 50, 20)/*BGRA*/, new Scalar(180, 255, 255), mask2);
+            //Imgproc.CvtColor(mask, mask, Imgproc.ColorHsv2rgb,0);
+            //Imgproc.CvtColor(mask, mask, Imgproc.ColorRgb2rgba, 0);
+
+            Mat output = new Mat();
+           
+            //Core.Bitwise_not(mask, mask);
+            Core.Bitwise_or(mask1, mask2, mask1);
+            Core.Bitwise_and(img, img, output, mask1);
+            mask1.Release();
+            mask2.Release();
+            hsvImg.Release();
+            //Core.Bitwise_not(output, output);
+            
+            return output;
+        }
         public void OnImageAvailable(ImageReader reader)
         {
             if (1 == Interlocked.CompareExchange(ref MainActivity.canProcessImage, 0, 1)) // if canProcessImage = 1 -> set canProcessImage = 0 immediately and return 1
@@ -686,24 +727,94 @@ namespace CustomVision //name of our app
                         Bitmap scaledBitmap = Bitmap.CreateScaledBitmap(bitmap, inputsize, inputsize, false);
                         Bitmap resizedBitmap = scaledBitmap.Copy(Bitmap.Config.Argb8888, false);
 
-                        Mat rgba = new Mat();
-                        Mat mIntermediateMat = new Mat();
-                        Utils.BitmapToMat(resizedBitmap, rgba);
-                        Size ksize = new Size(3, 3);
-                        Imgproc.GaussianBlur(rgba, rgba, ksize, 0);
-                        //Mat rgbaInnerWindow = rgba.Submat(rgba.Height()-2*rgba.Height()/8, top + height, left, left + width);
-                        Imgproc.Canny(rgba, mIntermediateMat, 80, 90);
-                        Imgproc.CvtColor(mIntermediateMat, rgba, Imgproc.ColorGray2bgra, 4);
-                        rgba.Release();
-                        Utils.MatToBitmap(mIntermediateMat, resizedBitmap);
+                        Mat imgMat = new Mat(); 
+                        Utils.BitmapToMat(resizedBitmap, imgMat);
+
+                        //imgMat = imgMat.Submat(imgMat.Height() - 2 * rgba.Height() / 8, top + height, left, left + width);
 
 
+                        imgMat = DetectColor(imgMat);
+
+                        
+                        Mat cannyMat = new Mat();
+
+                        //Blur and detect edge
+                        
+                        Size ksize = new Size(5, 5);
+                        Imgproc.GaussianBlur(imgMat, imgMat, ksize, 0);
+                        Imgproc.Canny(imgMat, cannyMat, 50, 150);
+
+                        //Detec lines from edge image
+                        Mat lines = new Mat();
+                        int threshold = 50;
+                        int minLineSize = 100;
+                        int lineGap = 10;
+                        Imgproc.HoughLinesP(cannyMat, lines,1, Math.PI / 180, threshold, minLineSize, lineGap);
+
+                        double sumOfAngle = 0.0;
+                        for (int x = 0; x < lines.Rows(); x++)
+                        {
+                            double[] vec = lines.Get(x, 0);
+                            double x1 = vec[0],
+                                    y1 = vec[1],
+                                    x2 = vec[2],
+                                    y2 = vec[3];
+                            Org.Opencv.Core.Point start = new Org.Opencv.Core.Point(x1, y1);
+                            Org.Opencv.Core.Point end = new Org.Opencv.Core.Point(x2, y2);
+                            double dx = x1 - x2;
+                            double dy = y1 - y2;
+
+                            double dist = Math.Sqrt(dx * dx + dy * dy);
+                            double angle = Math.Atan2(dy, dx) * (float)(180 / Math.PI); //measure slope
+
+                            if (dist > 30)  //lines that have length greater than 30
+                            {
+                                Imgproc.Line(imgMat, start, end, new Scalar(0, 255, 0, 255), 3);
+                                sumOfAngle += angle;
+                            }
+
+                        }
+
+                        sumOfAngle /= lines.Rows(); //average of slopes
+                        int lineNum = lines.Rows();
+                        MainActivity.SaveLog_thres(sumOfAngle, DateTime.Now, prefix);
+                        //Log.Error("iowa", "angle print");
+                        //Console.WriteLine(sumOfAngle);
+
+                        //convert Mat to Bitmap again
+                        Utils.MatToBitmap(imgMat, resizedBitmap);
+
+                        //Release all Mats
+                        imgMat.Release();
+                        cannyMat.Release();
+                        lines.Release();
+                        Double veerRight_Thres = -50.0; //intial threshold
+                        Double veerLeft_Thres = 100.0; //intial threshold
+                        Double inlaneMinThres = -50;
+                        Double inlaneMaxThres = 100;
+
+                        if (lineNum != 0)
+                        {
+                            if (sumOfAngle < veerRight_Thres)
+                            {
+                                MainActivity.Speak("Veerright");
+                            }
+                            else if (sumOfAngle > veerLeft_Thres)
+                            {
+                                MainActivity.Speak(" Veerleft");
+                            }
+                            else if (sumOfAngle > inlaneMinThres && sumOfAngle < inlaneMaxThres)
+                            {
+                                MainActivity.Speak("Inlane");
+                            }
+                        }
+                        //Utils.MatToBitmap(imgMat, resizedBitmap);
                         MainActivity.SaveLog("created bitmap", DateTime.Now, prefix); // write when the bitmap is created to the log
                         BitmapPrefix bitmapPrefix = new BitmapPrefix(resizedBitmap, prefix); // **TODO
                         if (!MainActivity.bc.IsAddingCompleted) // **TODO
                         {
                             MainActivity.bc.Add(bitmapPrefix); // **TODO
-                            MainActivity.RecognizeImage(resizedBitmap, prefix); // call the classifier to recognize the resizedimage
+                            //MainActivity.RecognizeImage(resizedBitmap, prefix); // call the classifier to recognize the resizedimage
                         }
                     }
                     image.Close(); // This closes the image so the phone no longer has to hold onto 
