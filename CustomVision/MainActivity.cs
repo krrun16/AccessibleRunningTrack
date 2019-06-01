@@ -507,7 +507,7 @@ namespace CustomVision //name of our app
             string msg = prefix + ".  " + currentTime.TimeOfDay + "_" + label;
             string sdCardPath = Android.OS.Environment.ExternalStorageDirectory.Path + FOLDER_NAME +
                 "/" + IMAGE_FOLDER_COUNT;
-            string filePath = System.IO.Path.Combine(sdCardPath, IMAGE_FOLDER_COUNT+"log.txt");
+            string filePath = System.IO.Path.Combine(sdCardPath,"0_log.txt");
             lock (locker)
             {
                 using (StreamWriter write = new StreamWriter(filePath, true))
@@ -523,7 +523,7 @@ namespace CustomVision //name of our app
             string msg = prefix + ".  " + currentTime.TimeOfDay + "_" + label;
             string sdCardPath = Android.OS.Environment.ExternalStorageDirectory.Path + FOLDER_NAME +
                 "/" + IMAGE_FOLDER_COUNT;
-            string filePath = System.IO.Path.Combine(sdCardPath,"A_threslog.txt");
+            string filePath = System.IO.Path.Combine(sdCardPath,"0_threslog.txt");
             lock (locker)
             {
                 using (StreamWriter write = new StreamWriter(filePath, true))
@@ -610,6 +610,125 @@ namespace CustomVision //name of our app
         {
             
         }
+
+        public static void ImplementImageProcessing(Bitmap resizedBitmap,int prefix)
+        {
+            
+            Mat imgMat = new Mat();
+            List<string> labels = new List<string>();
+            string[] input = { "inlane", "veerleft", "veerright" };
+            labels.AddRange(input);
+            string currentLabel = "";
+            Utils.BitmapToMat(resizedBitmap, imgMat);
+            //imgMat = imgMat.Submat(imgMat.Height() - 2 * rgba.Height() / 8, top + height, left, left + width);
+            imgMat = DetectColor(imgMat);
+            Mat cannyMat = new Mat();
+            //Blur and detect edge
+            Size ksize = new Size(5, 5);
+            Imgproc.GaussianBlur(imgMat, imgMat, ksize, 0);
+            Imgproc.Canny(imgMat, cannyMat, 50, 150);
+            //Detec lines from edge image
+            Mat lines = new Mat();
+            int threshold = 50;
+            int minLineSize = 100;
+            int lineGap = 10;
+            Imgproc.HoughLinesP(cannyMat, lines, 1, Math.PI / 180, threshold, minLineSize, lineGap);
+            double sumOfAngle = 0.0;
+            for (int x = 0; x < lines.Rows(); x++)
+            {
+                double[] vec = lines.Get(x, 0);
+                double x1 = vec[0],
+                        y1 = vec[1],
+                        x2 = vec[2],
+                        y2 = vec[3];
+                Org.Opencv.Core.Point start = new Org.Opencv.Core.Point(x1, y1);
+                Org.Opencv.Core.Point end = new Org.Opencv.Core.Point(x2, y2);
+                double dx = x1 - x2;
+                double dy = y1 - y2;
+                double dist = Math.Sqrt(dx * dx + dy * dy);
+                double angle = Math.Atan2(dy, dx) * (float)(180 / Math.PI); //measure slope
+                if (dist > 30)  //lines that have length greater than 30
+                {
+                    Imgproc.Line(imgMat, start, end, new Scalar(0, 255, 0, 255), 3);
+                    sumOfAngle += angle;
+                }
+
+            }
+
+            sumOfAngle /= lines.Rows(); //average of slopes
+            int lineNum = lines.Rows();
+            
+            MainActivity.SaveLog_thres(sumOfAngle, DateTime.Now, prefix);
+            
+
+            //Log.Error("iowa", "angle print");
+            //Console.WriteLine(sumOfAngle);
+
+            //convert Mat to Bitmap again
+            Utils.MatToBitmap(imgMat, resizedBitmap);
+
+            //Release all Mats
+            imgMat.Release();
+            cannyMat.Release();
+            lines.Release();
+            Double veerRight_Thres = -50.0; //intial threshold
+            Double veerLeft_Thres = 100.0; //intial threshold
+            Double inlaneMinThres = -50;
+            Double inlaneMaxThres = 100;
+
+            if (lineNum != 0)
+            {
+                if (sumOfAngle < veerRight_Thres)
+                {
+                    currentLabel = labels[2];
+                }
+                else if (sumOfAngle > veerLeft_Thres)
+                {
+                    currentLabel = labels[1];
+                }
+                else if (sumOfAngle > inlaneMinThres && sumOfAngle < inlaneMaxThres)
+                {
+                    currentLabel = labels[0];
+                }
+            }
+            StoreResult(currentLabel);
+            SaveLog("current result: " + currentLabel, DateTime.Now, prefix);
+            string bestResultSoFar=GetTopResult(labels);
+            if (bestResultSoFar == null)
+            {
+                Speak(currentLabel);
+            }
+            else
+            {
+                SaveLog("best result found from image processing: " + bestResultSoFar, DateTime.Now, prefix);
+                Speak(bestResultSoFar);
+                prefix = prefix + 1;
+            }
+        }
+
+        private static Mat DetectColor(Mat img)
+        {
+            Mat mask1 = new Mat();
+            Mat mask2 = new Mat();
+            Mat hsvImg = new Mat();
+            Imgproc.CvtColor(img, hsvImg, Imgproc.ColorRgb2hsv, 0);
+            Core.InRange(hsvImg, new Scalar(0, 50, 20)/*BGRA*/, new Scalar(5, 255, 255), mask1);
+            Core.InRange(hsvImg, new Scalar(175, 50, 20)/*BGRA*/, new Scalar(180, 255, 255), mask2);
+            //Imgproc.CvtColor(mask, mask, Imgproc.ColorHsv2rgb,0);
+            //Imgproc.CvtColor(mask, mask, Imgproc.ColorRgb2rgba, 0);
+
+            Mat output = new Mat();
+
+            //Core.Bitwise_not(mask, mask);
+            Core.Bitwise_or(mask1, mask2, mask1);
+            Core.Bitwise_and(img, img, output, mask1);
+            mask1.Release();
+            mask2.Release();
+            hsvImg.Release();
+            //Core.Bitwise_not(output, output);
+
+            return output;
+        }
     }
 
     public class BitmapPrefix
@@ -635,15 +754,16 @@ namespace CustomVision //name of our app
         // We don't explicitly call this code
         // If there is a picture available...
 
-        private Mat DetectColor(Mat img)
-        {
+
+        //private Mat DetectColor(Mat img)
+       // {
             
-            Mat mask1 = new Mat();
+           /* Mat mask1 = new Mat();
             Mat mask2 = new Mat();
             Mat hsvImg = new Mat();
             Imgproc.CvtColor(img, hsvImg, Imgproc.ColorRgb2hsv,0);
-            Core.InRange(hsvImg, new Scalar(0, 50, 20)/*BGRA*/,new Scalar(5,255, 255), mask1);
-            Core.InRange(hsvImg, new Scalar(175, 50, 20)/*BGRA*/, new Scalar(180, 255, 255), mask2);
+            Core.InRange(hsvImg, new Scalar(0, 50, 20),new Scalar(5,255, 255), mask1);
+            Core.InRange(hsvImg, new Scalar(175, 50, 20), new Scalar(180, 255, 255), mask2);
             //Imgproc.CvtColor(mask, mask, Imgproc.ColorHsv2rgb,0);
             //Imgproc.CvtColor(mask, mask, Imgproc.ColorRgb2rgba, 0);
 
@@ -655,10 +775,9 @@ namespace CustomVision //name of our app
             mask1.Release();
             mask2.Release();
             hsvImg.Release();
-            //Core.Bitwise_not(output, output);
-            
-            return output;
-        }
+            //Core.Bitwise_not(output, output);  
+            return output;*/
+       // } 
         public void OnImageAvailable(ImageReader reader)
         {
             if (1 == Interlocked.CompareExchange(ref MainActivity.canProcessImage, 0, 1)) // if canProcessImage = 1 -> set canProcessImage = 0 immediately and return 1
@@ -726,13 +845,13 @@ namespace CustomVision //name of our app
                         //resize the bitmap
                         Bitmap scaledBitmap = Bitmap.CreateScaledBitmap(bitmap, inputsize, inputsize, false);
                         Bitmap resizedBitmap = scaledBitmap.Copy(Bitmap.Config.Argb8888, false);
-
-                        Mat imgMat = new Mat(); 
+                        MainActivity.ImplementImageProcessing(resizedBitmap,prefix);
+                        /*Mat imgMat = new Mat(); 
                         Utils.BitmapToMat(resizedBitmap, imgMat);
 
                         //imgMat = imgMat.Submat(imgMat.Height() - 2 * rgba.Height() / 8, top + height, left, left + width);
 
-
+                        
                         imgMat = DetectColor(imgMat);
 
                         
@@ -807,7 +926,7 @@ namespace CustomVision //name of our app
                             {
                                 MainActivity.Speak("Inlane");
                             }
-                        }
+                        }*/
                         //Utils.MatToBitmap(imgMat, resizedBitmap);
                         MainActivity.SaveLog("created bitmap", DateTime.Now, prefix); // write when the bitmap is created to the log
                         BitmapPrefix bitmapPrefix = new BitmapPrefix(resizedBitmap, prefix); // **TODO
