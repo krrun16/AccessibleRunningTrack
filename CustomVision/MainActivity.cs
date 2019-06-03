@@ -680,9 +680,9 @@ namespace CustomVision //name of our app
             Imgproc.Canny(imgMat, cannyMat, 50, 150);
             //Detec lines from edge image
             Mat lines = new Mat();
-            int threshold = 10;
-            int minLineSize = 100;
-            int lineGap = 5;
+            int threshold = 50;
+            int minLineSize = 50;
+            int lineGap = 8;
             Imgproc.HoughLinesP(cannyMat, lines, 1, Math.PI / 180, threshold, minLineSize, lineGap);
             double sumOfAngle = 0.0;
             for (int x = 0; x < lines.Rows(); x++)
