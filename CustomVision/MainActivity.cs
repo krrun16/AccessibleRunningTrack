@@ -630,8 +630,8 @@ namespace CustomVision //name of our app
             //Detec lines from edge image
             Mat lines = new Mat();
             int threshold = 50;
-            int minLineSize = 100;
-            int lineGap = 10;
+            int minLineSize = 50;
+            int lineGap = 8;
             Imgproc.HoughLinesP(cannyMat, lines, 1, Math.PI / 180, threshold, minLineSize, lineGap);
             double sumOfAngle = 0.0;
             for (int x = 0; x < lines.Rows(); x++)
@@ -647,11 +647,8 @@ namespace CustomVision //name of our app
                 double dy = y1 - y2;
                 double dist = Math.Sqrt(dx * dx + dy * dy);
                 double angle = Math.Atan2(dy, dx) * (float)(180 / Math.PI); //measure slope
-                if (dist > 30)  //lines that have length greater than 30
-                {
-                    Imgproc.Line(imgMat, start, end, new Scalar(0, 255, 0, 255), 3);
-                    sumOfAngle += angle;
-                }
+                Imgproc.Line(imgMat, start, end, new Scalar(0, 255, 0, 255), 3);
+                sumOfAngle += angle; 
 
             }
 
