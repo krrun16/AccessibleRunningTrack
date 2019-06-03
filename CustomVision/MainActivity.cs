@@ -24,6 +24,7 @@ using Org.Opencv.Android;
 using Org.Opencv.Core;
 using Org.Opencv.Imgproc;
 using Size = Org.Opencv.Core.Size;
+using Android.Content.Res;
 
 namespace CustomVision //name of our app
 {
@@ -142,6 +143,7 @@ namespace CustomVision //name of our app
         private static List<string> storeWindow = new List<string>();
         private static TextToSpeech tts;
         private static readonly int WINDOW_SIZE = 5;
+        private static bool ttsdone = false;
        
         protected override void OnCreate(Bundle savedInstanceState)
         {
@@ -176,10 +178,37 @@ namespace CustomVision //name of our app
                 }
                 tts = new TextToSpeech(this, this);
             }
+            tts = new TextToSpeech(this, this);
+            if (!OpenCVLoader.InitDebug())
+            {
+                Log.Debug("Iowa", "Internal OpenCV library not found. Using OpenCV Manager for initialization");
+                OpenCVLoader.InitAsync(OpenCVLoader.OpencvVersion300, this, this);
+            }
+            else
+            {
+                Log.Debug("Iowa", "OpenCV library found inside package. Using it!");
+                OnManagerConnected(LoaderCallbackInterface.Success);
+            }
+
+            
+        }
+
+        private Bitmap getBitmapFromAssets(string fileName)
+        {
+            AssetManager assetManager = Application.Context.Assets;
+            System.IO.Stream istr = assetManager.Open(fileName);
+            Bitmap bitmap = BitmapFactory.DecodeStream(istr);
+            istr.Close();
+            return bitmap;
+
         }
 
         public static void Speak(String CurrentText)
         {
+            if(tts==null ||  ttsdone != true)
+            {
+                return;
+            }
             if (PreviousText == CurrentText)
             {
                 tts.Speak(CurrentText, QueueMode.Add, null, null);
@@ -194,6 +223,23 @@ namespace CustomVision //name of our app
         protected override void OnResume()
         {
             base.OnResume();
+
+            AssetManager assetManager = Application.Context.Assets;
+            string[] assetsList = assetManager.List("");
+            int prefix = 1;
+
+            foreach (string fileName in assetsList)
+            {
+                if (fileName.Contains(".png"))
+                {
+                    Bitmap test = getBitmapFromAssets(fileName);
+                    ImplementImageProcessing(test, prefix, fileName);
+                    prefix++;
+
+                }
+
+            }
+            /*
             if (!OpenCVLoader.InitDebug())
             {
                 Log.Debug("Iowa", "Internal OpenCV library not found. Using OpenCV Manager for initialization");
@@ -203,7 +249,8 @@ namespace CustomVision //name of our app
             {
                 Log.Debug("Iowa", "OpenCV library found inside package. Using it!");
                 OnManagerConnected(LoaderCallbackInterface.Success);
-            }
+            }*/
+            
             OpenBackgroundThread();
             if(show_video && textureView.IsAvailable || !show_video)
             {
@@ -589,8 +636,12 @@ namespace CustomVision //name of our app
 
         public void OnInit([GeneratedEnum] OperationResult status)
         {
-            if (!status.Equals(OperationResult.Success))
+            if (!status.Equals(OperationResult.Success)) 
                 Log.Error("Uiowa", "Text to speech not initialized!");
+            else
+            {
+                ttsdone = true;
+            }
         }
 
         public void OnManagerConnected(int p0)
@@ -611,7 +662,7 @@ namespace CustomVision //name of our app
             
         }
 
-        public static void ImplementImageProcessing(Bitmap resizedBitmap,int prefix)
+        public static void ImplementImageProcessing(Bitmap test,int prefix, string fileName)
         {
             
             Mat imgMat = new Mat();
@@ -619,7 +670,7 @@ namespace CustomVision //name of our app
             string[] input = { "inlane", "veerleft", "veerright" };
             labels.AddRange(input);
             string currentLabel = "";
-            Utils.BitmapToMat(resizedBitmap, imgMat);
+            Utils.BitmapToMat(test, imgMat);
             //imgMat = imgMat.Submat(imgMat.Height() - 2 * rgba.Height() / 8, top + height, left, left + width);
             imgMat = DetectColor(imgMat);
             Mat cannyMat = new Mat();
@@ -629,9 +680,9 @@ namespace CustomVision //name of our app
             Imgproc.Canny(imgMat, cannyMat, 50, 150);
             //Detec lines from edge image
             Mat lines = new Mat();
-            int threshold = 50;
+            int threshold = 10;
             int minLineSize = 100;
-            int lineGap = 10;
+            int lineGap = 5;
             Imgproc.HoughLinesP(cannyMat, lines, 1, Math.PI / 180, threshold, minLineSize, lineGap);
             double sumOfAngle = 0.0;
             for (int x = 0; x < lines.Rows(); x++)
@@ -647,34 +698,33 @@ namespace CustomVision //name of our app
                 double dy = y1 - y2;
                 double dist = Math.Sqrt(dx * dx + dy * dy);
                 double angle = Math.Atan2(dy, dx) * (float)(180 / Math.PI); //measure slope
-                if (dist > 30)  //lines that have length greater than 30
-                {
+              
                     Imgproc.Line(imgMat, start, end, new Scalar(0, 255, 0, 255), 3);
                     sumOfAngle += angle;
-                }
+                
 
             }
 
             sumOfAngle /= lines.Rows(); //average of slopes
             int lineNum = lines.Rows();
             
-            MainActivity.SaveLog_thres(sumOfAngle, DateTime.Now, prefix);
+            SaveLog_thres(sumOfAngle, DateTime.Now, prefix);
             
 
             //Log.Error("iowa", "angle print");
             //Console.WriteLine(sumOfAngle);
 
             //convert Mat to Bitmap again
-            Utils.MatToBitmap(imgMat, resizedBitmap);
+            Utils.MatToBitmap(imgMat, test);
 
             //Release all Mats
             imgMat.Release();
             cannyMat.Release();
             lines.Release();
-            Double veerRight_Thres = -50.0; //intial threshold
-            Double veerLeft_Thres = 100.0; //intial threshold
-            Double inlaneMinThres = -50;
-            Double inlaneMaxThres = 100;
+            Double veerRight_Thres = -70.0; //intial threshold
+            Double veerLeft_Thres = 70.0; //intial threshold
+            Double inlaneMinThres = -70;
+            Double inlaneMaxThres = 70;
 
             if (lineNum != 0)
             {
@@ -692,7 +742,7 @@ namespace CustomVision //name of our app
                 }
             }
             StoreResult(currentLabel);
-            SaveLog("current result: " + currentLabel, DateTime.Now, prefix);
+            SaveLog("current result: " + fileName+ "_"+currentLabel, DateTime.Now, prefix);
             string bestResultSoFar=GetTopResult(labels);
             if (bestResultSoFar == null)
             {
@@ -700,9 +750,17 @@ namespace CustomVision //name of our app
             }
             else
             {
-                SaveLog("best result found from image processing: " + bestResultSoFar, DateTime.Now, prefix);
+                SaveLog("best result"+fileName + "-"+ bestResultSoFar, DateTime.Now, prefix);
                 Speak(bestResultSoFar);
-                prefix = prefix + 1;
+                prefix++;
+            }
+
+            MainActivity.SaveLog("created bitmap", DateTime.Now, prefix); // write when the bitmap is created to the log
+            BitmapPrefix bitmapPrefix = new BitmapPrefix(test, prefix); // **TODO
+            if (!MainActivity.bc.IsAddingCompleted) // **TODO
+            {
+                MainActivity.bc.Add(bitmapPrefix); // **TODO
+                                                   //MainActivity.RecognizeImage(resizedBitmap, prefix); // call the classifier to recognize the resizedimage
             }
         }
 
@@ -845,7 +903,7 @@ namespace CustomVision //name of our app
                         //resize the bitmap
                         Bitmap scaledBitmap = Bitmap.CreateScaledBitmap(bitmap, inputsize, inputsize, false);
                         Bitmap resizedBitmap = scaledBitmap.Copy(Bitmap.Config.Argb8888, false);
-                        MainActivity.ImplementImageProcessing(resizedBitmap,prefix);
+                        //MainActivity.ImplementImageProcessing(resizedBitmap,prefix);
                         /*Mat imgMat = new Mat(); 
                         Utils.BitmapToMat(resizedBitmap, imgMat);
 
@@ -932,7 +990,7 @@ namespace CustomVision //name of our app
                         BitmapPrefix bitmapPrefix = new BitmapPrefix(resizedBitmap, prefix); // **TODO
                         if (!MainActivity.bc.IsAddingCompleted) // **TODO
                         {
-                            MainActivity.bc.Add(bitmapPrefix); // **TODO
+                            //MainActivity.bc.Add(bitmapPrefix); // **TODO
                             //MainActivity.RecognizeImage(resizedBitmap, prefix); // call the classifier to recognize the resizedimage
                         }
                     }
