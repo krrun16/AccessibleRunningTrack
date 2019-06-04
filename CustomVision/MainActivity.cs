@@ -112,6 +112,7 @@ namespace CustomVision //name of our app
     [Activity(Label = "@string/app_name", MainLauncher = false, Icon = "@mipmap/icon", Theme = "@style/MyTheme", ScreenOrientation = ScreenOrientation.Portrait)]
     public class MainActivity : AppCompatActivity, TextureView.ISurfaceTextureListener, TextToSpeech.IOnInitListener, ILoaderCallbackInterface
     {
+        private int TESTPREFIX = 0;
         private static Context context;
         public static int cameraFacing;
         public static TextureView textureView;
@@ -226,16 +227,14 @@ namespace CustomVision //name of our app
 
             AssetManager assetManager = Application.Context.Assets;
             string[] assetsList = assetManager.List("");
-            int prefix = 1;
 
             foreach (string fileName in assetsList)
             {
                 if (fileName.Contains(".png"))
                 {
+                    int prefix = Interlocked.Increment(ref TESTPREFIX);
                     Bitmap test = getBitmapFromAssets(fileName);
                     ImplementImageProcessing(test, prefix, fileName);
-                    prefix++;
-
                 }
 
             }
@@ -674,16 +673,28 @@ namespace CustomVision //name of our app
             //imgMat = imgMat.Submat(imgMat.Height() - 2 * rgba.Height() / 8, top + height, left, left + width);
             imgMat = DetectColor(imgMat);
             Mat cannyMat = new Mat();
+            Mat sharpCannyMat = new Mat();
+            Mat blurMat = new Mat();
+            Mat sharpMat = new Mat();
             //Blur and detect edge
             Size ksize = new Size(5, 5);
-            Imgproc.GaussianBlur(imgMat, imgMat, ksize, 0);
-            Imgproc.Canny(imgMat, cannyMat, 50, 150);
+            Imgproc.GaussianBlur(imgMat, blurMat, ksize, 0);
+            Core.AddWeighted(imgMat, 1.5, blurMat, -0.5, 0, sharpMat);
+            Imgproc.Canny(sharpMat, sharpCannyMat, 50, 150);
+            Imgproc.Canny(blurMat, cannyMat, 50, 150);
             //Detec lines from edge image
             Mat lines = new Mat();
+            Mat sharpLines = new Mat();
             int threshold = 50;
             int minLineSize = 50;
             int lineGap = 8;
+            Imgproc.HoughLinesP(sharpCannyMat, sharpLines, 1, Math.PI / 180, threshold, minLineSize, lineGap);
             Imgproc.HoughLinesP(cannyMat, lines, 1, Math.PI / 180, threshold, minLineSize, lineGap);
+
+            if (sharpLines.Rows() < 20)
+            {
+                lines = sharpLines;
+            }
             double sumOfAngle = 0.0;
             for (int x = 0; x < lines.Rows(); x++)
             {
@@ -742,7 +753,7 @@ namespace CustomVision //name of our app
                 }
             }
             StoreResult(currentLabel);
-            SaveLog("current result: " + fileName+ "_"+currentLabel, DateTime.Now, prefix);
+            SaveLog("current result: " + lineNum + "_" + fileName+ "_"+currentLabel, DateTime.Now, prefix);
             string bestResultSoFar=GetTopResult(labels);
             if (bestResultSoFar == null)
             {
@@ -752,7 +763,6 @@ namespace CustomVision //name of our app
             {
                 SaveLog("best result"+fileName + "-"+ bestResultSoFar, DateTime.Now, prefix);
                 Speak(bestResultSoFar);
-                prefix++;
             }
 
             MainActivity.SaveLog("created bitmap", DateTime.Now, prefix); // write when the bitmap is created to the log
