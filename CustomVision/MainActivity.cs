@@ -623,16 +623,34 @@ namespace CustomVision //name of our app
             //imgMat = imgMat.Submat(imgMat.Height() - 2 * rgba.Height() / 8, top + height, left, left + width);
             imgMat = DetectColor(imgMat);
             Mat cannyMat = new Mat();
+            Mat sharpCannyMat = new Mat();
+            Mat blurMat = new Mat();
+            Mat sharpMat = new Mat();
             //Blur and detect edge
-            Size ksize = new Size(5, 5);
-            Imgproc.GaussianBlur(imgMat, imgMat, ksize, 0);
-            Imgproc.Canny(imgMat, cannyMat, 50, 150);
+            Size ksize = new Size(9, 9);
+            Imgproc.GaussianBlur(imgMat, blurMat, ksize, 0);
+            Core.AddWeighted(imgMat, 1.5, blurMat, -0.5, 0, sharpMat);
+            Mat grayImg = new Mat();
+            Imgproc.CvtColor(sharpMat, grayImg, Imgproc.ColorRgb2gray);
+            Org.Opencv.Core.Scalar mean_scalar = Core.Mean(grayImg);
+            //Log.Debug("iowa","mean"+mean_scalar);
+            Imgproc.Canny(sharpMat, sharpCannyMat, mean_scalar.Val[0] * 0.66, mean_scalar.Val[0] * 1.33);
+            Imgproc.Canny(blurMat, cannyMat, mean_scalar.Val[0] * 0.66, mean_scalar.Val[0] * 1.33);
+
+            //Imgproc.Canny(sharpMat, sharpCannyMat, 50,150);
+            //Imgproc.Canny(blurMat, cannyMat, 50, 150);
             //Detec lines from edge image
             Mat lines = new Mat();
+            Mat sharpLines = new Mat();
             int threshold = 50;
             int minLineSize = 50;
             int lineGap = 8;
+            Imgproc.HoughLinesP(sharpCannyMat, sharpLines, 1, Math.PI / 180, threshold, minLineSize, lineGap);
             Imgproc.HoughLinesP(cannyMat, lines, 1, Math.PI / 180, threshold, minLineSize, lineGap);
+            if (sharpLines.Rows() < 20)
+            {
+                lines = sharpLines;
+            }
             double sumOfAngle = 0.0;
             for (int x = 0; x < lines.Rows(); x++)
             {
@@ -647,7 +665,7 @@ namespace CustomVision //name of our app
                 double dy = y1 - y2;
                 double dist = Math.Sqrt(dx * dx + dy * dy);
                 double angle = Math.Atan2(dy, dx) * (float)(180 / Math.PI); //measure slope
-                Imgproc.Line(imgMat, start, end, new Scalar(0, 255, 0, 255), 3);
+                Imgproc.Line(imgMat, start, end, new Scalar(0, 255, 0, 255), 1);
                 sumOfAngle += angle; 
 
             }
@@ -699,7 +717,6 @@ namespace CustomVision //name of our app
             {
                 SaveLog("best result found from image processing: " + bestResultSoFar, DateTime.Now, prefix);
                 Speak(bestResultSoFar);
-                prefix = prefix + 1;
             }
         }
 
@@ -711,12 +728,7 @@ namespace CustomVision //name of our app
             Imgproc.CvtColor(img, hsvImg, Imgproc.ColorRgb2hsv, 0);
             Core.InRange(hsvImg, new Scalar(0, 50, 20)/*BGRA*/, new Scalar(5, 255, 255), mask1);
             Core.InRange(hsvImg, new Scalar(175, 50, 20)/*BGRA*/, new Scalar(180, 255, 255), mask2);
-            //Imgproc.CvtColor(mask, mask, Imgproc.ColorHsv2rgb,0);
-            //Imgproc.CvtColor(mask, mask, Imgproc.ColorRgb2rgba, 0);
-
             Mat output = new Mat();
-
-            //Core.Bitwise_not(mask, mask);
             Core.Bitwise_or(mask1, mask2, mask1);
             Core.Bitwise_and(img, img, output, mask1);
             mask1.Release();
@@ -750,31 +762,6 @@ namespace CustomVision //name of our app
         private int PREFIX = 0;
         // We don't explicitly call this code
         // If there is a picture available...
-
-
-        //private Mat DetectColor(Mat img)
-       // {
-            
-           /* Mat mask1 = new Mat();
-            Mat mask2 = new Mat();
-            Mat hsvImg = new Mat();
-            Imgproc.CvtColor(img, hsvImg, Imgproc.ColorRgb2hsv,0);
-            Core.InRange(hsvImg, new Scalar(0, 50, 20),new Scalar(5,255, 255), mask1);
-            Core.InRange(hsvImg, new Scalar(175, 50, 20), new Scalar(180, 255, 255), mask2);
-            //Imgproc.CvtColor(mask, mask, Imgproc.ColorHsv2rgb,0);
-            //Imgproc.CvtColor(mask, mask, Imgproc.ColorRgb2rgba, 0);
-
-            Mat output = new Mat();
-           
-            //Core.Bitwise_not(mask, mask);
-            Core.Bitwise_or(mask1, mask2, mask1);
-            Core.Bitwise_and(img, img, output, mask1);
-            mask1.Release();
-            mask2.Release();
-            hsvImg.Release();
-            //Core.Bitwise_not(output, output);  
-            return output;*/
-       // } 
         public void OnImageAvailable(ImageReader reader)
         {
             if (1 == Interlocked.CompareExchange(ref MainActivity.canProcessImage, 0, 1)) // if canProcessImage = 1 -> set canProcessImage = 0 immediately and return 1
@@ -843,87 +830,6 @@ namespace CustomVision //name of our app
                         Bitmap scaledBitmap = Bitmap.CreateScaledBitmap(bitmap, inputsize, inputsize, false);
                         Bitmap resizedBitmap = scaledBitmap.Copy(Bitmap.Config.Argb8888, false);
                         MainActivity.ImplementImageProcessing(resizedBitmap,prefix);
-                        /*Mat imgMat = new Mat(); 
-                        Utils.BitmapToMat(resizedBitmap, imgMat);
-
-                        //imgMat = imgMat.Submat(imgMat.Height() - 2 * rgba.Height() / 8, top + height, left, left + width);
-
-                        
-                        imgMat = DetectColor(imgMat);
-
-                        
-                        Mat cannyMat = new Mat();
-
-                        //Blur and detect edge
-                        
-                        Size ksize = new Size(5, 5);
-                        Imgproc.GaussianBlur(imgMat, imgMat, ksize, 0);
-                        Imgproc.Canny(imgMat, cannyMat, 50, 150);
-
-                        //Detec lines from edge image
-                        Mat lines = new Mat();
-                        int threshold = 50;
-                        int minLineSize = 100;
-                        int lineGap = 10;
-                        Imgproc.HoughLinesP(cannyMat, lines,1, Math.PI / 180, threshold, minLineSize, lineGap);
-
-                        double sumOfAngle = 0.0;
-                        for (int x = 0; x < lines.Rows(); x++)
-                        {
-                            double[] vec = lines.Get(x, 0);
-                            double x1 = vec[0],
-                                    y1 = vec[1],
-                                    x2 = vec[2],
-                                    y2 = vec[3];
-                            Org.Opencv.Core.Point start = new Org.Opencv.Core.Point(x1, y1);
-                            Org.Opencv.Core.Point end = new Org.Opencv.Core.Point(x2, y2);
-                            double dx = x1 - x2;
-                            double dy = y1 - y2;
-
-                            double dist = Math.Sqrt(dx * dx + dy * dy);
-                            double angle = Math.Atan2(dy, dx) * (float)(180 / Math.PI); //measure slope
-
-                            if (dist > 30)  //lines that have length greater than 30
-                            {
-                                Imgproc.Line(imgMat, start, end, new Scalar(0, 255, 0, 255), 3);
-                                sumOfAngle += angle;
-                            }
-
-                        }
-
-                        sumOfAngle /= lines.Rows(); //average of slopes
-                        int lineNum = lines.Rows();
-                        MainActivity.SaveLog_thres(sumOfAngle, DateTime.Now, prefix);
-                        //Log.Error("iowa", "angle print");
-                        //Console.WriteLine(sumOfAngle);
-
-                        //convert Mat to Bitmap again
-                        Utils.MatToBitmap(imgMat, resizedBitmap);
-
-                        //Release all Mats
-                        imgMat.Release();
-                        cannyMat.Release();
-                        lines.Release();
-                        Double veerRight_Thres = -50.0; //intial threshold
-                        Double veerLeft_Thres = 100.0; //intial threshold
-                        Double inlaneMinThres = -50;
-                        Double inlaneMaxThres = 100;
-
-                        if (lineNum != 0)
-                        {
-                            if (sumOfAngle < veerRight_Thres)
-                            {
-                                MainActivity.Speak("Veerright");
-                            }
-                            else if (sumOfAngle > veerLeft_Thres)
-                            {
-                                MainActivity.Speak(" Veerleft");
-                            }
-                            else if (sumOfAngle > inlaneMinThres && sumOfAngle < inlaneMaxThres)
-                            {
-                                MainActivity.Speak("Inlane");
-                            }
-                        }*/
                         //Utils.MatToBitmap(imgMat, resizedBitmap);
                         MainActivity.SaveLog("created bitmap", DateTime.Now, prefix); // write when the bitmap is created to the log
                         BitmapPrefix bitmapPrefix = new BitmapPrefix(resizedBitmap, prefix); // **TODO
