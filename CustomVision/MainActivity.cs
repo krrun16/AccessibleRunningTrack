@@ -134,6 +134,7 @@ namespace CustomVision //name of our app
         private static readonly object locker = new object();
         public static bool show_video = false;
         public static string PreviousText = "noLabel";
+        private static String previousOutput = null;
 
         private static readonly string[] permissions = {
             Manifest.Permission.WriteExternalStorage,
@@ -142,13 +143,20 @@ namespace CustomVision //name of our app
         private static List<string> storeWindow = new List<string>();
         private static TextToSpeech tts;
         private static readonly int WINDOW_SIZE = 5;
-       
+        private static MediaPlayer mPlayer;
+
+        private static System.Timers.Timer timer;
+        public static bool isReady = false;
+        public static bool wait = false;
+
+
         protected override void OnCreate(Bundle savedInstanceState)
         {
             base.OnCreate(savedInstanceState);
             context = ApplicationContext;
-            show_video = Intent.GetBooleanExtra("show_video", false);
-            cameraFacing = (int)LensFacing.Back;
+            show_video = true;
+            wait = Intent.GetBooleanExtra("wait", false);
+            cameraFacing = (int)LensFacing.Front; //will change it to front before study
             string sdcardPath = Android.OS.Environment.ExternalStorageDirectory.Path + 
                 FOLDER_NAME + "/" + IMAGE_FOLDER_COUNT;
             if (show_video)
@@ -176,13 +184,37 @@ namespace CustomVision //name of our app
                 }
                 tts = new TextToSpeech(this, this);
             }
+            mPlayer = MediaPlayer.Create(this, Resource.Raw.sound);
+            if (wait == true)
+            {
+                timer = new System.Timers.Timer();
+                timer.Interval = 30000;
+                timer.Enabled = true;
+                timer.Elapsed += (object sender, System.Timers.ElapsedEventArgs e) =>
+                {
+                    timer.Stop();
+                    Log.Debug("Uiowa","Timer finished!");
+                    isReady = true; //after 30 secs, ready to process the image
+                    Speak("GO"); //Say "Go" before start processing
+                    timer.Dispose();
+                };
+                timer.Start();
+            } else
+            {
+                isReady = true; // for tutorial button wait = false, directly start processing
+            }
+            
         }
 
         public static void Speak(String CurrentText)
         {
+            if (tts.IsSpeaking) 
+            {
+                return;
+            }
             if (PreviousText == CurrentText)
             {
-                tts.Speak(CurrentText, QueueMode.Add, null, null);
+                tts.Speak(CurrentText, QueueMode.Flush, null, null);
             }
             else
             {
@@ -256,6 +288,8 @@ namespace CustomVision //name of our app
             CloseCamera();
             CloseBackgroundThread();
             FinishAffinity();
+            mPlayer.Stop();
+            mPlayer.Release();
             System.Environment.Exit(0);
         }
 
@@ -616,7 +650,7 @@ namespace CustomVision //name of our app
             
             Mat imgMat = new Mat();
             List<string> labels = new List<string>();
-            string[] input = { "inlane", "veerleft", "veerright" };
+            string[] input = { "inlane", "left", "right" };
             labels.AddRange(input);
             string currentLabel = "";
             Utils.BitmapToMat(resizedBitmap, imgMat);
@@ -656,9 +690,9 @@ namespace CustomVision //name of our app
             {
                 double[] vec = lines.Get(x, 0);
                 double x1 = vec[0],
-                        y1 = vec[1],
-                        x2 = vec[2],
-                        y2 = vec[3];
+                       y1 = vec[1],
+                       x2 = vec[2],
+                       y2 = vec[3];
                 Org.Opencv.Core.Point start = new Org.Opencv.Core.Point(x1, y1);
                 Org.Opencv.Core.Point end = new Org.Opencv.Core.Point(x2, y2);
                 double dx = x1 - x2;
@@ -709,15 +743,37 @@ namespace CustomVision //name of our app
             StoreResult(currentLabel);
             SaveLog("current result: " + currentLabel, DateTime.Now, prefix);
             string bestResultSoFar=GetTopResult(labels);
+            String curOutput = null;
             if (bestResultSoFar == null)
             {
-                Speak(currentLabel);
+                curOutput = currentLabel;
             }
             else
             {
                 SaveLog("best result found from image processing: " + bestResultSoFar, DateTime.Now, prefix);
-                Speak(bestResultSoFar);
+                curOutput = bestResultSoFar;
             }
+            // string[] input = { "inlane", "left", "right" }
+            
+            if (curOutput == labels[2]) //going right
+            {
+                Speak(labels[1]); //speaking left
+            }
+            else if (curOutput == labels[1]) //going left
+            {
+                Speak(labels[2]); //speaking right
+            }
+            else if(curOutput == labels[0])// going inlane
+            {
+                if(previousOutput != curOutput && previousOutput != null) //checking if previous label = left or right
+                {
+                    // play ding
+                    mPlayer.Start();
+                }
+            }
+
+            previousOutput = curOutput; // store previous output
+
         }
 
         private static Mat DetectColor(Mat img)
@@ -780,7 +836,7 @@ namespace CustomVision //name of our app
                     }
 
                     Bitmap bitmap = null;
-                    if(MainActivity.show_video)
+                    if(MainActivity.show_video && MainActivity.isReady == true)
                     {
                         // textureview is the region of the screen that contains the camera, 
                         // so get the picture with the same dimensions as the screen
@@ -795,7 +851,7 @@ namespace CustomVision //name of our app
                             matrix.PostScale(-1, 1, cx, cy);
                             bitmap = Bitmap.CreateBitmap(bitmap, 0, 0, bitmap.Width, bitmap.Height, matrix, true);
                         }
-                    } else
+                    } else if(MainActivity.isReady == true)
                     {
                         MainActivity.SaveLog("begin bitmap conversion", DateTime.Now, prefix); // write when the photo can be processed to the log
                         //yuv420888 update line 506 as well
@@ -811,7 +867,7 @@ namespace CustomVision //name of our app
                         int cx = bitmap.Width / 2;
                         int cy = bitmap.Height / 2;
                         Matrix matrix = new Matrix();
-                        if (MainActivity.cameraFacing == (int)LensFacing.Front)
+                        if (MainActivity.cameraFacing == (int)LensFacing.Back)
                         {
                             matrix.PostScale(-1, 1, cx, cy);
                         }
@@ -821,7 +877,7 @@ namespace CustomVision //name of our app
                         MainActivity.SaveLog("create resized bitmap", DateTime.Now, prefix); // write when the photo can be processed to the log
                     }
 
-                    if (bitmap != null)
+                    if (bitmap != null )
                     {
                         //retrieve the input size from the ImageClassifier
                         int inputsize = MainActivity.imageClassifier.getInputSize();

@@ -1,7 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <resources>
-  <string name="show_video">Start (with video)</string>
-  <string name="no_video">Start (no video)</string>
+  <string name="show_video">Start</string>
+  <string name="no_video">Tutorial</string>
   <string name="app_name">Accessible Track</string>
    
 </resources>

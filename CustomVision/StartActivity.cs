@@ -38,14 +38,14 @@ namespace CustomVision
         private void StartButton_Click(object sender, EventArgs e)
         {
             Intent m_activity = new Intent(this, typeof(MainActivity));
-            m_activity.PutExtra("show_video", true);
+            m_activity.PutExtra("wait", true);
             StartActivity(m_activity);
         }
 
         private void StartButtonNoVideo_Click(object sender, EventArgs e)
         {
             Intent m_activity = new Intent(this, typeof(MainActivity));
-            m_activity.PutExtra("show_video", false);
+            m_activity.PutExtra("wait", false);
             StartActivity(m_activity);
         }
     }
