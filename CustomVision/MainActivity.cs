@@ -720,10 +720,10 @@ namespace CustomVision //name of our app
             imgMat.Release();
             cannyMat.Release();
             lines.Release();
-            Double veerRight_Thres = -50.0; //intial threshold
-            Double veerLeft_Thres = 100.0; //intial threshold
-            Double inlaneMinThres = -50;
-            Double inlaneMaxThres = 100;
+            Double veerRight_Thres = -50.0; 
+            Double veerLeft_Thres = 50.0; 
+            Double inlaneMinThres = -50.0;
+            Double inlaneMaxThres = 50.0;
 
             if (lineNum != 0)
             {
