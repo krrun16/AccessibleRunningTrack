@@ -699,6 +699,10 @@ namespace CustomVision //name of our app
                 double dy = y1 - y2;
                 double dist = Math.Sqrt(dx * dx + dy * dy);
                 double angle = Math.Atan2(dy, dx) * (float)(180 / Math.PI); //measure slope
+                if (angle < 0)
+                {
+                    angle = angle + 180;
+                }
                 Imgproc.Line(imgMat, start, end, new Scalar(0, 255, 0, 255), 1);
                 sumOfAngle += angle; 
 
@@ -720,10 +724,8 @@ namespace CustomVision //name of our app
             imgMat.Release();
             cannyMat.Release();
             lines.Release();
-            Double veerRight_Thres = -50.0; 
-            Double veerLeft_Thres = 50.0; 
-            Double inlaneMinThres = -50.0;
-            Double inlaneMaxThres = 50.0;
+            double veerRight_Thres = 65.0;
+            double veerLeft_Thres = 115.0; 
 
             if (lineNum != 0)
             {
@@ -735,7 +737,7 @@ namespace CustomVision //name of our app
                 {
                     currentLabel = labels[1];
                 }
-                else if (sumOfAngle > inlaneMinThres && sumOfAngle < inlaneMaxThres)
+                else if (sumOfAngle >= veerRight_Thres && sumOfAngle <= veerLeft_Thres)
                 {
                     currentLabel = labels[0];
                 }
