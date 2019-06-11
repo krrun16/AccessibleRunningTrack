@@ -156,7 +156,7 @@ namespace CustomVision //name of our app
             context = ApplicationContext;
             show_video = true;
             wait = Intent.GetBooleanExtra("wait", false);
-            cameraFacing = (int)LensFacing.Back; 
+            cameraFacing = (int)LensFacing.Front; 
             string sdcardPath = Android.OS.Environment.ExternalStorageDirectory.Path + 
                 FOLDER_NAME + "/" + IMAGE_FOLDER_COUNT;
             if (show_video)
