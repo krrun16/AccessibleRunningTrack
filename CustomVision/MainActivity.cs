@@ -699,6 +699,7 @@ namespace CustomVision //name of our app
             int lineGap = 8;
             Imgproc.HoughLinesP(sharpCannyMat, sharpLines, 1, Math.PI / 180, threshold, minLineSize, lineGap);
             Imgproc.HoughLinesP(cannyMat, lines, 1, Math.PI / 180, threshold, minLineSize, lineGap);
+            List<double> angles = new List<double>();
 
             if (sharpLines.Rows() < 20)
             {
@@ -718,11 +719,50 @@ namespace CustomVision //name of our app
                 double dy = y1 - y2;
                 double dist = Math.Sqrt(dx * dx + dy * dy);
                 double angle = Math.Atan2(dy, dx) * (float)(180 / Math.PI); //measure slope
-              
-                Imgproc.Line(imgMat, start, end, new Scalar(0, 255, 0, 255), 1);
-                sumOfAngle += angle;
+                if (angle < 0)
+                {
+                    angle = angle + 180;
+                }
                 
+                if(angle >= -180 && angle < -135)
+                {
+                    Imgproc.Line(imgMat, start, end, new Scalar(0, 255, 0, 255), 4); //green
+                } else if (angle >= -135 && angle < -90)
+                {
+                    Imgproc.Line(imgMat, start, end, new Scalar(255, 0, 0, 255), 4); //red
+                } else if (angle >= -90 && angle < -45)
+                {
+                    Imgproc.Line(imgMat, start, end, new Scalar(0, 0, 255, 255), 4); //blue - DNE
+                } else if (angle >= -45 && angle < 0)
+                {
+                    Imgproc.Line(imgMat, start, end, new Scalar(128, 128, 0, 255), 4); //yellow - DNE
+                } else if (angle >= 0 && angle < 45)
+                {
+                    Imgproc.Line(imgMat, start, end, new Scalar(0, 128, 128, 255), 4); //cyan - DNE
+                } else if (angle >= 45 && angle < 90)
+                {
+                    Imgproc.Line(imgMat, start, end, new Scalar(128, 0, 128, 255), 4); //magenta - DNE
+                } else if (angle >= 90 && angle < 135)
+                {
+                    Imgproc.Line(imgMat, start, end, new Scalar(255, 255, 255, 255), 4); // white
+                } else if (angle >= 135 && angle < 180)
+                {
+                    Imgproc.Line(imgMat, start, end, new Scalar(0, 0, 0, 255), 4); //black
+                }
 
+                angles.Add(angle);
+                sumOfAngle += angle;
+            }
+
+            angles.Sort();
+            int cutoff = angles.Count / 6;
+            List<double> anglesSorted = new List<double>();
+            angles.RemoveRange(angles.Count - cutoff, cutoff);
+            angles.RemoveRange(0, cutoff);
+            sumOfAngle = 0;
+            foreach (double remainingAngle in angles)
+            {
+                sumOfAngle += remainingAngle;
             }
 
             sumOfAngle /= lines.Rows(); //average of slopes
@@ -741,10 +781,8 @@ namespace CustomVision //name of our app
             imgMat.Release();
             cannyMat.Release();
             lines.Release();
-            Double veerRight_Thres = -50.0; //intial threshold
-            Double veerLeft_Thres = 50.0; //intial threshold
-            Double inlaneMinThres = -50;
-            Double inlaneMaxThres = 50;
+            double veerRight_Thres = 65.0; //intial threshold
+            double veerLeft_Thres = 115.0; //intial threshold
 
             if (lineNum != 0)
             {
@@ -756,7 +794,7 @@ namespace CustomVision //name of our app
                 {
                     currentLabel = labels[1];
                 }
-                else if (sumOfAngle > inlaneMinThres && sumOfAngle < inlaneMaxThres)
+                else if (sumOfAngle >= veerRight_Thres && sumOfAngle <= veerLeft_Thres)
                 {
                     currentLabel = labels[0];
                 }
