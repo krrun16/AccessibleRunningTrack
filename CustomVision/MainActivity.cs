@@ -754,7 +754,7 @@ namespace CustomVision //name of our app
                 sumOfAngle += angle;
             }
 
-            angles.Sort();
+            /*angles.Sort();
             int cutoff = angles.Count / 6;
             List<double> anglesSorted = new List<double>();
             angles.RemoveRange(angles.Count - cutoff, cutoff);
@@ -763,7 +763,7 @@ namespace CustomVision //name of our app
             foreach (double remainingAngle in angles)
             {
                 sumOfAngle += remainingAngle;
-            }
+            }*/
 
             sumOfAngle /= lines.Rows(); //average of slopes
             int lineNum = lines.Rows();
@@ -823,12 +823,14 @@ namespace CustomVision //name of our app
 
         private static Mat DetectColor(Mat img)
         {
+
             Mat mask1 = new Mat();
             Mat mask2 = new Mat();
             Mat hsvImg = new Mat();
             Imgproc.CvtColor(img, hsvImg, Imgproc.ColorRgb2hsv, 0);
-            Core.InRange(hsvImg, new Scalar(0, 50, 20)/*BGRA*/, new Scalar(5, 255, 255), mask1);
-            Core.InRange(hsvImg, new Scalar(175, 50, 20)/*BGRA*/, new Scalar(180, 255, 255), mask2);
+
+            Core.InRange(hsvImg, new Scalar(0, 50, 20)/*BGRA*/, new Scalar(10, 255, 255), mask1);
+            Core.InRange(hsvImg, new Scalar(160, 50, 20)/*BGRA*/, new Scalar(180, 255, 255), mask2);
             //Imgproc.CvtColor(mask, mask, Imgproc.ColorHsv2rgb,0);
             //Imgproc.CvtColor(mask, mask, Imgproc.ColorRgb2rgba, 0);
             Mat output = new Mat();
