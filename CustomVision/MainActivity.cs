@@ -760,10 +760,6 @@ namespace CustomVision //name of our app
             {
                 if(previousOutput != curOutput && previousOutput != null) //checking if previous label = left or right
                 {
-                    if (tts.IsSpeaking)
-                    {
-                        tts.Stop();
-                    }
                     // play ding
                     mPlayer.Start();
                 }
@@ -779,8 +775,8 @@ namespace CustomVision //name of our app
             Mat mask2 = new Mat();
             Mat hsvImg = new Mat();
             Imgproc.CvtColor(img, hsvImg, Imgproc.ColorRgb2hsv, 0);
-            Core.InRange(hsvImg, new Scalar(0, 50, 20), new Scalar(5, 255, 255), mask1);
-            Core.InRange(hsvImg, new Scalar(175, 50, 20), new Scalar(180, 255, 255), mask2);
+            Core.InRange(hsvImg, new Scalar(0, 50, 20), new Scalar(10, 255, 255), mask1);
+            Core.InRange(hsvImg, new Scalar(160, 50, 20), new Scalar(180, 255, 255), mask2);
             Mat output = new Mat();
             Core.Bitwise_or(mask1, mask2, mask1);
             Core.Bitwise_and(img, img, output, mask1);
