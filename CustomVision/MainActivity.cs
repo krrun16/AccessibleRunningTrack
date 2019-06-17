@@ -195,7 +195,7 @@ namespace CustomVision //name of our app
                     timer.Stop();
                     Log.Debug("Uiowa","Timer finished!");
                     isReady = true; //after 30 secs, ready to process the image
-                    Speak("GO"); //Say "Go" before start processing
+                    Speak("GO", 0); //Say "Go" before start processing
                     timer.Dispose();
                 };
                 timer.Start();
@@ -206,10 +206,11 @@ namespace CustomVision //name of our app
             
         }
 
-        public static void Speak(String CurrentText)
+        public static void Speak(string CurrentText, int prefix)
         {
             if (!tts.IsSpeaking) 
             {
+                SaveLog("speak " + CurrentText, DateTime.Now, prefix);
                 tts.Speak(CurrentText, QueueMode.Flush, null, null);
             }
         }
@@ -750,19 +751,23 @@ namespace CustomVision //name of our app
             
             if (curOutput == labels[2]) //going right
             {
-                Speak(labels[1]); //speaking left
+                Speak(labels[1], prefix); //speaking left
             }
             else if (curOutput == labels[1]) //going left
             {
-                Speak(labels[2]); //speaking right
+                Speak(labels[2], prefix); //speaking right
             }
             else if(curOutput == labels[0])// going inlane
             {
-                if(previousOutput != curOutput && previousOutput != null) //checking if previous label = left or right
+                if (previousOutput != curOutput && previousOutput != null) //checking if previous label = left or right
                 {
                     // play ding
+                    MainActivity.SaveLog("in lane ding play", DateTime.Now, prefix);
                     mPlayer.Start();
                 }
+            } else
+            {
+                MainActivity.SaveLog("no speaking or ding", DateTime.Now, prefix);
             }
 
             previousOutput = curOutput; // store previous output

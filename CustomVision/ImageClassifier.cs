@@ -130,13 +130,13 @@ namespace CustomVision
             string bestResultSoFar = MainActivity.GetTopResult(labels2);
             if (bestResultSoFar == null)
             {
-                MainActivity.Speak(orderedResults.First().Item2);
+                MainActivity.Speak(orderedResults.First().Item2, prefix);
                 return orderedResults.First().Item2;
             }
             else
             {
                 MainActivity.SaveLog("best result found: " + bestResultSoFar, DateTime.Now, prefix);
-                MainActivity.Speak(bestResultSoFar);
+                MainActivity.Speak(bestResultSoFar, prefix);
                 return bestResultSoFar;
             }
         }
