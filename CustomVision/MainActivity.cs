@@ -237,25 +237,32 @@ namespace CustomVision //name of our app
         private int PREFIX = 0;
         public void OnSensorChanged(Android.Hardware.SensorEvent e)
         {
-            Log.Error("IOWA","sensor changed");
+            //Log.Error("IOWA","sensor changed");
             float alpha = 0.97f;
 
             lock (_syncLock)
             {
                 if (e.Sensor.Type == Android.Hardware.SensorType.Accelerometer)
                 {
+                    //commented out logs in case you want to explore individual values
                     //Log.Debug("IOWA", "mGravity[0]: " + mGravity[0]);
-                    Log.Debug("IOWA", "mGravity[1]: " + mGravity[1]);
+                    //Log.Debug("IOWA", "mGravity[1]: " + mGravity[1]);
+                    //Log.Debug("IOWA", "mGravity[2]: " + mGravity[2]);
                     if (mGravity[1] < 9.8) // assume all is well if it is >= gravity
                     {
-                        float rotatedAngle = (float)Java.Lang.Math.ToDegrees(Math.Acos(mGravity[1] / 9.8));
+                        // implementation found from page 7 of: 
+                        // https://www.analog.com/media/en/technical-documentation/application-notes/AN-1057.pdf
+                        // see equation 13, where corresponding Figure 12c Y and Z axes are switched
+                        // based on the fact that the phone is upright.
+                        double numerator = Math.Sqrt(Math.Pow(mGravity[0], 2) + Math.Pow(mGravity[2], 2));
+                        double rotatedAngle = Java.Lang.Math.ToDegrees(Math.Atan(numerator / mGravity[1]));
                         if (mGravity[0] < 0)
                         {
                             rotatedAngle *= -1;
                         }
-                        //Log.Debug("IOWA", "rotatedAngle: " + rotatedAngle);
+                        Log.Debug("IOWA", "rotatedAngle: " + rotatedAngle);
                     }
-                    //Log.Debug("IOWA", "mGravity[2]: " + mGravity[2]);
+
                     mGravity[0] = alpha * mGravity[0] + (1 - alpha)
                             * e.Values[0];
                     mGravity[1] = alpha * mGravity[1] + (1 - alpha)
@@ -284,7 +291,7 @@ namespace CustomVision //name of our app
 
                 bool success = Android.Hardware.SensorManager.GetRotationMatrix(R, I, mGravity,
                         mGeomagnetic);
-                Log.Debug("IOWA", "success: " + success);
+                //Log.Debug("IOWA", "success: " + success);
                 if (success)
                 {
                     float[] orientation = new float[3];
