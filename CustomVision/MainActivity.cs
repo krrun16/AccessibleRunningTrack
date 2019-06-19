@@ -24,6 +24,7 @@ using Org.Opencv.Android;
 using Org.Opencv.Core;
 using Org.Opencv.Imgproc;
 using Size = Org.Opencv.Core.Size;
+using Android.Hardware;
 
 namespace CustomVision //name of our app
 {
@@ -61,7 +62,7 @@ namespace CustomVision //name of our app
         // Without bugs, this should not get called
         // If the camera experiences an error
         // We close the camera, and we unset that variable
-        public override void OnError(CameraDevice camera, CameraError error)
+        public override void OnError(CameraDevice camera, Android.Hardware.Camera2.CameraError error)
         {
             camera.Close();
             MainActivity.cameraDevice = null;
@@ -109,7 +110,8 @@ namespace CustomVision //name of our app
     }
 
     [Activity(Label = "@string/app_name", MainLauncher = false, Icon = "@mipmap/icon", Theme = "@style/MyTheme", ScreenOrientation = ScreenOrientation.Portrait)]
-    public class MainActivity : AppCompatActivity, TextureView.ISurfaceTextureListener, TextToSpeech.IOnInitListener, ILoaderCallbackInterface
+    public class MainActivity : AppCompatActivity, TextureView.ISurfaceTextureListener, 
+        TextToSpeech.IOnInitListener, ILoaderCallbackInterface, Android.Hardware.ISensorEventListener
     {
         private static Context context;
         public static int cameraFacing;
@@ -149,6 +151,10 @@ namespace CustomVision //name of our app
         public static bool isReady = false;
         public static bool wait = false;
 
+        static readonly object _syncLock = new object();
+        private Android.Hardware.SensorManager sensorManager;
+        private Android.Hardware.Sensor gsensor;
+        private float[] mGravity = new float[3];
 
         protected override void OnCreate(Bundle savedInstanceState)
         {
@@ -156,7 +162,10 @@ namespace CustomVision //name of our app
             context = ApplicationContext;
             show_video = true;
             wait = Intent.GetBooleanExtra("wait", false);
-            cameraFacing = (int)LensFacing.Front; 
+            cameraFacing = (int)LensFacing.Back;
+            sensorManager = (Android.Hardware.SensorManager)GetSystemService(SensorService);
+            gsensor = sensorManager.GetDefaultSensor(Android.Hardware.SensorType.Accelerometer);
+
             string sdcardPath = Android.OS.Environment.ExternalStorageDirectory.Path + 
                 FOLDER_NAME + "/" + IMAGE_FOLDER_COUNT;
             if (show_video)
@@ -229,7 +238,10 @@ namespace CustomVision //name of our app
                 OnManagerConnected(LoaderCallbackInterface.Success);
             }
             OpenBackgroundThread();
-            if(show_video && textureView.IsAvailable || !show_video)
+
+            sensorManager.RegisterListener(this, gsensor, Android.Hardware.SensorDelay.Fastest);
+
+            if (show_video && textureView.IsAvailable || !show_video)
             {
                 if (cameraDevice == null)
                 {
@@ -791,6 +803,47 @@ namespace CustomVision //name of our app
             //Core.Bitwise_not(output, output);
 
             return output;
+        }
+
+        void ISensorEventListener.OnAccuracyChanged(Sensor sensor, SensorStatus accuracy)
+        {
+            
+        }
+
+        void ISensorEventListener.OnSensorChanged(SensorEvent e)
+        {
+            float alpha = 0.97f;
+            lock (_syncLock)
+            {
+                if (e.Sensor.Type == Android.Hardware.SensorType.Accelerometer)
+                {
+                    mGravity[0] = alpha * mGravity[0] + (1 - alpha)
+                            * e.Values[0];
+                    mGravity[1] = alpha * mGravity[1] + (1 - alpha)
+                            * e.Values[1];
+                    mGravity[2] = alpha * mGravity[2] + (1 - alpha)
+                            * e.Values[2];
+
+                    //commented out logs in case you want to explore individual values
+                    //Log.Debug("IOWA", "mGravity[0]: " + mGravity[0]);
+                    //Log.Debug("IOWA", "mGravity[1]: " + mGravity[1]);
+                    //Log.Debug("IOWA", "mGravity[2]: " + mGravity[2]);
+                    if (mGravity[1] < 9.8) // assume all is well if it is >= gravity
+                    {
+                        // implementation found from page 7 of: 
+                        // https://www.analog.com/media/en/technical-documentation/application-notes/AN-1057.pdf
+                        // see equation 13, where corresponding Figure 12c Y and Z axes are switched
+                        // based on the fact that the phone is upright.
+                        double numerator = Math.Sqrt(Math.Pow(mGravity[0], 2) + Math.Pow(mGravity[2], 2));
+                        double rotatedAngle = Java.Lang.Math.ToDegrees(Math.Atan(numerator / mGravity[1]));
+                        if (mGravity[0] < 0)
+                        {
+                            rotatedAngle *= -1;
+                        }
+                        Log.Debug("IOWA", "rotatedAngle: " + rotatedAngle);
+                    }
+                }
+            }
         }
     }
 
