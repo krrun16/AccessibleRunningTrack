@@ -152,7 +152,7 @@ namespace CustomVision //name of our app
         private float[] R = new float[9];
         private float[] I = new float[9];
 
-        private float azimuth;
+        //private float azimuth;
         //private float azimuthFix;
 
         protected override void OnCreate(Bundle savedInstanceState)
@@ -230,13 +230,14 @@ namespace CustomVision //name of our app
         }
 
 
-                public void OnAccuracyChanged(Android.Hardware.Sensor sensor, [GeneratedEnum] Android.Hardware.SensorStatus accuracy)
+        public void OnAccuracyChanged(Android.Hardware.Sensor sensor, [GeneratedEnum] Android.Hardware.SensorStatus accuracy)
         {
             
         }
-
+        private int PREFIX = 0;
         public void OnSensorChanged(Android.Hardware.SensorEvent e)
         {
+            Log.Error("IOWA","sensor changed");
             float alpha = 0.97f;
 
             lock (_syncLock)
@@ -262,7 +263,7 @@ namespace CustomVision //name of our app
                     mGravity[2] = alpha * mGravity[2] + (1 - alpha)
                             * e.Values[2];
 
-                    // mGravity = event.values;
+                    //mGravity = event.values;
 
                     // Log.e(TAG, Float.toString(mGravity[0]));
                 }
@@ -284,12 +285,12 @@ namespace CustomVision //name of our app
 
                 bool success = Android.Hardware.SensorManager.GetRotationMatrix(R, I, mGravity,
                         mGeomagnetic);
+                Log.Debug("IOWA", "success: " + success);
                 if (success)
                 {
                     float[] orientation = new float[3];
-                        Android.Hardware.SensorManager.GetOrientation(R, orientation);
-                        // Log.d(TAG, "azimuth (rad): " + azimuth);
-                    azimuth = (float)Java.Lang.Math.ToDegrees(orientation[0]); // orientation
+                    Android.Hardware.SensorManager.GetOrientation(R, orientation);
+                    float azimuth = (float)Java.Lang.Math.ToDegrees(orientation[0]);
                     float pitch = (float)Java.Lang.Math.ToDegrees(orientation[1]);
                     float roll = (float)Java.Lang.Math.ToDegrees(orientation[2]);
 
@@ -297,6 +298,12 @@ namespace CustomVision //name of our app
                     //if (pitch < -90) pitch+= (-2 * (90 + pitch));
                     //else if (pitch > 90) pitch += (2 * (90 - pitch));
                     //azimuth = (azimuth  + 360) % 360;
+                    //Log.Debug("IOWA", "azimuth (deg): " + azimuth);
+                    //Log.Debug("IOWA", "pitch (deg): " + pitch);
+                    //Log.Debug("IOWA", "roll (deg): " + roll);
+
+                    int prefix = Interlocked.Increment(ref PREFIX);
+                    SaveLog_sensor_value(DateTime.Now, prefix , azimuth,pitch, roll);
                     //Log.Debug("IOWA", "azimuth (deg): " + azimuth);
                     //Log.Debug("IOWA", "pitch (deg): " + pitch);
                     //Log.Debug("IOWA", "roll (deg): " + roll);
@@ -594,6 +601,22 @@ namespace CustomVision //name of our app
             string sdCardPath = Android.OS.Environment.ExternalStorageDirectory.Path + FOLDER_NAME +
                 "/" + IMAGE_FOLDER_COUNT;
             string filePath = System.IO.Path.Combine(sdCardPath, IMAGE_FOLDER_COUNT+"log.txt");
+            lock (locker)
+            {
+                using (StreamWriter write = new StreamWriter(filePath, true))
+                {
+                    write.Write(msg + "\n");
+                }
+            }
+        }
+
+
+        public static void SaveLog_sensor_value(DateTime currentTime, int prefix, double azimuth, double pitch, double roll)
+        {
+            string msg = prefix + ". " + currentTime.TimeOfDay + "_"+" azimuth "+azimuth+ " pitch: "+pitch + " roll: " + roll;
+            string sdCardPath = Android.OS.Environment.ExternalStorageDirectory.Path + FOLDER_NAME +
+                "/" + IMAGE_FOLDER_COUNT;
+            string filePath = System.IO.Path.Combine(sdCardPath, "0" + "log_sensor.txt");
             lock (locker)
             {
                 using (StreamWriter write = new StreamWriter(filePath, true))
