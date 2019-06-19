@@ -279,7 +279,6 @@ namespace CustomVision //name of our app
                     mGeomagnetic[2] = alpha * mGeomagnetic[2] + (1 - alpha)
                                 * e.Values[2];
                     // Log.e(TAG, Float.toString(event.values[0]));
-                    Log.Debug("IOWA", "placeholder");
 
                 }
 
