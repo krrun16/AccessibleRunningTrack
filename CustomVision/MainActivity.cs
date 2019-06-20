@@ -686,6 +686,7 @@ namespace CustomVision //name of our app
             int lineGap = 8;
             Imgproc.HoughLinesP(sharpCannyMat, sharpLines, 1, Math.PI / 180, threshold, minLineSize, lineGap);
             Imgproc.HoughLinesP(cannyMat, lines, 1, Math.PI / 180, threshold, minLineSize, lineGap);
+
             if (sharpLines.Rows() < 20)
             {
                 lines = sharpLines;
@@ -708,6 +709,7 @@ namespace CustomVision //name of our app
                 {
                     angle = angle + 180;
                 }
+
                 Imgproc.Line(imgMat, start, end, new Scalar(0, 255, 0, 255), 1);
                 sumOfAngle += angle; 
 
@@ -929,7 +931,7 @@ namespace CustomVision //name of our app
                         MainActivity.SaveLog("create resized bitmap", DateTime.Now, prefix); // write when the photo can be processed to the log
                     }
 
-                    if (bitmap != null )
+                    if (bitmap != null)
                     {
                         //retrieve the input size from the ImageClassifier
                         int inputsize = MainActivity.imageClassifier.getInputSize();
@@ -937,9 +939,63 @@ namespace CustomVision //name of our app
                         //resize the bitmap
                         Bitmap scaledBitmap = Bitmap.CreateScaledBitmap(bitmap, inputsize, inputsize, false);
                         Bitmap resizedBitmap = scaledBitmap.Copy(Bitmap.Config.Argb8888, false);
+                        int w = resizedBitmap.Width;
+                        int h = resizedBitmap.Height;
                         var matrix = new Matrix();
-                        matrix.PostRotate(-1*(float)MainActivity.rotatedAngle);
+                        float angle = -1 * (float)MainActivity.rotatedAngle;
+                        matrix.PostRotate(angle);
                         resizedBitmap = Bitmap.CreateBitmap(resizedBitmap, 0, 0, resizedBitmap.Width, resizedBitmap.Height, matrix, true);
+
+
+                        //Find largest rectangle from rotated image////////////////////
+                        //https://stackoverflow.com/questions/16702966/rotate-image-and-crop-out-black-borders/16778797#16778797
+
+                        double angle_radian = Math.Abs(angle) * Math.PI / 180;
+                        int quadrant = (int)Math.Floor(angle_radian / (Math.PI / 2)) & 3;
+                        double sign_alpha;
+                        if ((quadrant & 1) == 0) {
+                            sign_alpha = angle_radian;
+                        }
+                        else
+                        {
+                            sign_alpha = (float)Math.PI - angle_radian;
+                        }
+
+                        double alpha = (sign_alpha % Math.PI + Math.PI) % Math.PI;
+
+                        double bb_w = w * Math.Cos(alpha) + h * Math.Sin(alpha);
+                        double bb_h = w * Math.Sin(alpha) + h * Math.Cos(alpha);
+                        double gamma;
+                        if (w< h) {
+                            gamma = Math.Atan2(bb_w, bb_w);
+                        }
+                        else {
+                            gamma = Math.Atan2(bb_w, bb_w);
+                        }
+
+                        double delta = Math.PI - alpha - gamma;
+
+                        double length;
+                        if (w < h) {
+                            length = h;
+                        } else
+                        {
+                            length = w;
+                        }
+
+                        double d = length * Math.Cos(alpha);
+                        double a = d * Math.Sin(alpha) / Math.Sin(delta);
+
+                        double y = a * Math.Cos(gamma);
+                        double x = y * Math.Tan(gamma);
+              
+                        double c_width = bb_w - 2 * x;
+                        double c_height = bb_h - 2 * y;
+                        int cx = resizedBitmap.Width / 2 - (int)c_width / 2;
+                        int cy = resizedBitmap.Height / 2 - (int)c_height / 2;       
+                        resizedBitmap = Bitmap.CreateBitmap(resizedBitmap, cx, cy, (int)c_width, (int)c_height);
+                        ///End of maximum rectangle calculation from rotated image//
+
                         MainActivity.ImplementImageProcessing(resizedBitmap,prefix);
                         //Utils.MatToBitmap(imgMat, resizedBitmap);
                         MainActivity.SaveLog("created bitmap", DateTime.Now, prefix); // write when the bitmap is created to the log
