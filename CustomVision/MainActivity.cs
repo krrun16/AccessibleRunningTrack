@@ -151,6 +151,7 @@ namespace CustomVision //name of our app
         private float[] mGeomagnetic = new float[3];
         private float[] R = new float[9];
         private float[] I = new float[9];
+        private float[] acc, mag;
 
         //private float azimuth;
         //private float azimuthFix;
@@ -248,6 +249,22 @@ namespace CustomVision //name of our app
                     //Log.Debug("IOWA", "mGravity[0]: " + mGravity[0]);
                     //Log.Debug("IOWA", "mGravity[1]: " + mGravity[1]);
                     //Log.Debug("IOWA", "mGravity[2]: " + mGravity[2]);
+
+                    List<float> test = new List<float>(e.Values);
+                    mGravity = test.ToArray();
+
+
+                    // FINALLY found a useful solution; thank goodness for this particular stack overflow
+                    // https://stackoverflow.com/questions/11175599/how-to-measure-the-tilt-of-the-phone-in-xy-plane-using-accelerometer-in-android/15149421#15149421
+                    float norm_of_gravity = (float)Math.Sqrt(Math.Pow(mGravity[0], 2) + Math.Pow(mGravity[1], 2) + Math.Pow(mGravity[2], 2));
+                    //normalizing gravity to ensure no NaN answers for atan
+                    mGravity[0] = mGravity[0] / norm_of_gravity;
+                    mGravity[1] = mGravity[1] / norm_of_gravity;
+                    mGravity[2] = mGravity[2] / norm_of_gravity;
+
+                    int rotation = (int)Math.Round(180 * (Math.Atan2(mGravity[0], mGravity[1])/ Math.PI));
+                    Log.Debug("IOWA", "rotation: " + rotation);
+
                     if (mGravity[1] < 9.8) // assume all is well if it is >= gravity
                     {
                         // implementation found from page 7 of: 
@@ -260,8 +277,9 @@ namespace CustomVision //name of our app
                         {
                             rotatedAngle *= -1;
                         }
-                        Log.Debug("IOWA", "rotatedAngle: " + rotatedAngle);
+                        //Log.Debug("IOWA", "rotatedAngle: " + rotatedAngle);
                     }
+                    /*
 
                     mGravity[0] = alpha * mGravity[0] + (1 - alpha)
                             * e.Values[0];
@@ -269,8 +287,10 @@ namespace CustomVision //name of our app
                             * e.Values[1];
                     mGravity[2] = alpha * mGravity[2] + (1 - alpha)
                             * e.Values[2];
-
+                    */
                     //mGravity = event.values;
+                    //List<float> test = new List<float>(e.Values);
+                    acc = test.ToArray();
 
                     // Log.e(TAG, Float.toString(mGravity[0]));
                 }
@@ -286,33 +306,65 @@ namespace CustomVision //name of our app
                     mGeomagnetic[2] = alpha * mGeomagnetic[2] + (1 - alpha)
                                 * e.Values[2];
                     // Log.e(TAG, Float.toString(event.values[0]));
-
+                    List<float> test = new List<float>(e.Values);
+                    mag = test.ToArray();
                 }
 
-                bool success = Android.Hardware.SensorManager.GetRotationMatrix(R, I, mGravity,
-                        mGeomagnetic);
-                //Log.Debug("IOWA", "success: " + success);
-                if (success)
+                if (acc != null && mag != null)
                 {
-                    float[] orientation = new float[3];
-                    Android.Hardware.SensorManager.GetOrientation(R, orientation);
-                    float azimuth = (float)Java.Lang.Math.ToDegrees(orientation[0]);
-                    float pitch = (float)Java.Lang.Math.ToDegrees(orientation[1]);
-                    float roll = (float)Java.Lang.Math.ToDegrees(orientation[2]);
+                    bool success = Android.Hardware.SensorManager.GetRotationMatrix(R, I, acc, mag);
+                    //Log.Debug("IOWA", "success: " + success);
+                    if (success)
+                    {
+                        float[] orientation = new float[3];
 
-                    // Pitch scaling
-                    //if (pitch < -90) pitch+= (-2 * (90 + pitch));
-                    //else if (pitch > 90) pitch += (2 * (90 - pitch));
-                    //azimuth = (azimuth  + 360) % 360;
-                    //Log.Debug("IOWA", "azimuth (deg): " + azimuth);
-                    //Log.Debug("IOWA", "pitch (deg): " + pitch);
-                    //Log.Debug("IOWA", "roll (deg): " + roll);
+                        float[] outR = new float[9];
+                        Android.Hardware.SensorManager.RemapCoordinateSystem(R, Android.Hardware.Axis.X, Android.Hardware.Axis.Z, outR);
+                        Android.Hardware.SensorManager.GetOrientation(R, orientation);
+                        float azimuth = (float)(orientation[0] * 180 / Math.PI);
+                        float pitch = (float)(orientation[1] * 180 / Math.PI);
+                        float roll = (float)(orientation[2] * 180 / Math.PI);
 
-                    int prefix = Interlocked.Increment(ref PREFIX);
-                    SaveLog_sensor_value(DateTime.Now, prefix , azimuth,pitch, roll);
-                    //Log.Debug("IOWA", "azimuth (deg): " + azimuth);
-                    //Log.Debug("IOWA", "pitch (deg): " + pitch);
-                    //Log.Debug("IOWA", "roll (deg): " + roll);
+                        /*if (pitch < -45 && pitch > -135)
+                        {
+                            // top side up
+                            Log.Debug("IOWA", "top");
+                        }
+                        else if (pitch > 45 && pitch < 135)
+                        {
+                            Log.Debug("IOWA", "bottom");
+                        }
+                        else if (roll > 45)
+                        {
+                            Log.Debug("IOWA", "right");
+                        }
+                        else if (roll < -45)
+                        {
+                            Log.Debug("IOWA", "left");
+                        }
+                        else
+                        {
+                            Log.Debug("IOWA", "landing");
+                        }*/
+
+                        acc = null;
+                        mag = null;
+
+
+                        // Pitch scaling
+                        //if (pitch < -90) pitch+= (-2 * (90 + pitch));
+                        //else if (pitch > 90) pitch += (2 * (90 - pitch));
+                        //azimuth = (azimuth  + 360) % 360;
+                        //Log.Debug("IOWA", "azimuth (deg): " + azimuth);
+                        //Log.Debug("IOWA", "pitch (deg): " + pitch);
+                        //Log.Debug("IOWA", "roll (deg): " + roll);
+
+                        //int prefix = Interlocked.Increment(ref PREFIX);
+                        //SaveLog_sensor_value(DateTime.Now, prefix, azimuth, pitch, roll);
+                        //Log.Debug("IOWA", "azimuth (deg): " + azimuth);
+                        //Log.Debug("IOWA", "pitch (deg): " + pitch);
+                        //Log.Debug("IOWA", "roll (deg): " + roll);
+                    }
                 }
             }
         
