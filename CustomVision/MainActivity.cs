@@ -858,7 +858,7 @@ namespace CustomVision //name of our app
                     mGravity[1] = mGravity[1] / norm_of_gravity;
                     mGravity[2] = mGravity[2] / norm_of_gravity;
 
-                    rotatedAngle = (int)Math.Round(180 * (Math.Atan2(mGravity[0], mGravity[1]) / Math.PI));
+                    rotatedAngle = 180 * (Math.Atan2(mGravity[0], mGravity[1]) / Math.PI);
                     Log.Debug("IOWA", "rotatedAngle: " + rotatedAngle);
                 }
             }
