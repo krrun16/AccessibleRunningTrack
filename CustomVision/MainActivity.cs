@@ -820,17 +820,18 @@ namespace CustomVision //name of our app
             {
                 if (e.Sensor.Type == Android.Hardware.SensorType.Accelerometer)
                 {
-                    mGravity[0] = alpha * mGravity[0] + (1 - alpha)
+                    /*mGravity[0] = alpha * mGravity[0] + (1 - alpha)
                             * e.Values[0];
                     mGravity[1] = alpha * mGravity[1] + (1 - alpha)
                             * e.Values[1];
                     mGravity[2] = alpha * mGravity[2] + (1 - alpha)
-                            * e.Values[2];
+                            * e.Values[2];*/
 
                     //commented out logs in case you want to explore individual values
                     //Log.Debug("IOWA", "mGravity[0]: " + mGravity[0]);
                     //Log.Debug("IOWA", "mGravity[1]: " + mGravity[1]);
                     //Log.Debug("IOWA", "mGravity[2]: " + mGravity[2]);
+                    /*
                     if (mGravity[1] < 9.8) // assume all is well if it is >= gravity
                     {
                         // implementation found from page 7 of: 
@@ -844,7 +845,21 @@ namespace CustomVision //name of our app
                             rotatedAngle *= -1;
                         }
                         Log.Debug("IOWA", "rotatedAngle: " + rotatedAngle);
-                    }
+                    }*/
+
+                    List<float> test = new List<float>(e.Values);
+                    mGravity = test.ToArray();
+
+                    // FINALLY found a useful solution; thank goodness for this particular stack overflow
+                    // https://stackoverflow.com/questions/11175599/how-to-measure-the-tilt-of-the-phone-in-xy-plane-using-accelerometer-in-android/15149421#15149421
+                    float norm_of_gravity = (float)Math.Sqrt(Math.Pow(mGravity[0], 2) + Math.Pow(mGravity[1], 2) + Math.Pow(mGravity[2], 2));
+                    //normalizing gravity to ensure no NaN answers for atan
+                    mGravity[0] = mGravity[0] / norm_of_gravity;
+                    mGravity[1] = mGravity[1] / norm_of_gravity;
+                    mGravity[2] = mGravity[2] / norm_of_gravity;
+
+                    rotatedAngle = (int)Math.Round(180 * (Math.Atan2(mGravity[0], mGravity[1]) / Math.PI));
+                    Log.Debug("IOWA", "rotatedAngle: " + rotatedAngle);
                 }
             }
         }
