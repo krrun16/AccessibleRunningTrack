@@ -956,11 +956,12 @@ namespace CustomVision //name of our app
                         Bitmap resizedBitmap = scaledBitmap.Copy(Bitmap.Config.Argb8888, false);
                         int w = resizedBitmap.Width;
                         int h = resizedBitmap.Height;
+                        BitmapPrefix bitmapPrefix = new BitmapPrefix(resizedBitmap, prefix); // **TODO
                         var matrix = new Matrix();
                         float angle = -1 * (float)MainActivity.rotatedAngle;
                         matrix.PostRotate(angle);
                         resizedBitmap = Bitmap.CreateBitmap(resizedBitmap, 0, 0, resizedBitmap.Width, resizedBitmap.Height, matrix, true);
-
+                        BitmapPrefix bitmapPrefixRotated = new BitmapPrefix(resizedBitmap, prefix); // **TODO
 
                         //Find largest rectangle from rotated image////////////////////
                         //https://stackoverflow.com/questions/16702966/rotate-image-and-crop-out-black-borders/16778797#16778797
@@ -1014,10 +1015,12 @@ namespace CustomVision //name of our app
                         MainActivity.ImplementImageProcessing(resizedBitmap,prefix);
                         //Utils.MatToBitmap(imgMat, resizedBitmap);
                         MainActivity.SaveLog("created bitmap", DateTime.Now, prefix); // write when the bitmap is created to the log
-                        BitmapPrefix bitmapPrefix = new BitmapPrefix(resizedBitmap, prefix); // **TODO
+                        BitmapPrefix bitmapPrefixCropped = new BitmapPrefix(resizedBitmap, prefix); // **TODO
                         if (!MainActivity.bc.IsAddingCompleted) // **TODO
                         {
                             MainActivity.bc.Add(bitmapPrefix); // **TODO
+                            MainActivity.bc.Add(bitmapPrefixRotated); // **TODO
+                            MainActivity.bc.Add(bitmapPrefixCropped); // **TODO
                             //MainActivity.RecognizeImage(resizedBitmap, prefix); // call the classifier to recognize the resizedimage
                         }
                     }
