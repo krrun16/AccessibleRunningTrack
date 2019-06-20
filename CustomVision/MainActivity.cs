@@ -155,6 +155,7 @@ namespace CustomVision //name of our app
         private Android.Hardware.SensorManager sensorManager;
         private Android.Hardware.Sensor gsensor;
         private float[] mGravity = new float[3];
+        public static double rotatedAngle;
 
         protected override void OnCreate(Bundle savedInstanceState)
         {
@@ -835,7 +836,7 @@ namespace CustomVision //name of our app
                         // see equation 13, where corresponding Figure 12c Y and Z axes are switched
                         // based on the fact that the phone is upright.
                         double numerator = Math.Sqrt(Math.Pow(mGravity[0], 2) + Math.Pow(mGravity[2], 2));
-                        double rotatedAngle = Java.Lang.Math.ToDegrees(Math.Atan(numerator / mGravity[1]));
+                        rotatedAngle = Java.Lang.Math.ToDegrees(Math.Atan(numerator / mGravity[1]));
                         if (mGravity[0] < 0)
                         {
                             rotatedAngle *= -1;
@@ -936,6 +937,9 @@ namespace CustomVision //name of our app
                         //resize the bitmap
                         Bitmap scaledBitmap = Bitmap.CreateScaledBitmap(bitmap, inputsize, inputsize, false);
                         Bitmap resizedBitmap = scaledBitmap.Copy(Bitmap.Config.Argb8888, false);
+                        var matrix = new Matrix();
+                        matrix.PostRotate(-1*(float)MainActivity.rotatedAngle);
+                        resizedBitmap = Bitmap.CreateBitmap(resizedBitmap, 0, 0, resizedBitmap.Width, resizedBitmap.Height, matrix, true);
                         MainActivity.ImplementImageProcessing(resizedBitmap,prefix);
                         //Utils.MatToBitmap(imgMat, resizedBitmap);
                         MainActivity.SaveLog("created bitmap", DateTime.Now, prefix); // write when the bitmap is created to the log
