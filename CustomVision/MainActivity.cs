@@ -814,10 +814,8 @@ namespace CustomVision //name of our app
 
                 sumOfAngle /= lines.Rows(); //average of slopes
                 int lineNum = lines.Rows();
-
-                MainActivity.SaveLog_thres(sumOfAngle, DateTime.Now, prefix);
-
-
+                double intersect_dist = point.X;
+                MainActivity.SaveLog_thres(intersect_dist, DateTime.Now, prefix); 
                 //Log.Error("iowa", "angle print");
                 //Console.WriteLine(sumOfAngle);
 
@@ -828,20 +826,23 @@ namespace CustomVision //name of our app
                 imgMat.Release();
                 cannyMat.Release();
                 lines.Release();
-                double veerRight_Thres = 65.0;
-                double veerLeft_Thres = 115.0;
+                // double veerRight_Thres = 65.0;
+                //double veerLeft_Thres = 115.0;
+                
+                double inlane_min = 95.0;
+                double inlane_max = 140.0;
 
                 if (lineNum != 0)
                 {
-                    if (sumOfAngle < veerRight_Thres)
+                    if (intersect_dist < inlane_min)
                     {
                         currentLabel = labels[2];
                     }
-                    else if (sumOfAngle > veerLeft_Thres)
+                    else if (intersect_dist > inlane_max)
                     {
                         currentLabel = labels[1];
                     }
-                    else if (sumOfAngle >= veerRight_Thres && sumOfAngle <= veerLeft_Thres)
+                    else if (intersect_dist >= inlane_min && intersect_dist <= inlane_max)
                     {
                         currentLabel = labels[0];
                     }
