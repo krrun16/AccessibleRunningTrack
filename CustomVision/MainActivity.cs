@@ -25,8 +25,6 @@ using Org.Opencv.Core;
 using Org.Opencv.Imgproc;
 using Size = Org.Opencv.Core.Size;
 using Android.Hardware;
-using MathNet.Numerics.LinearAlgebra;
-using MathNet.Numerics.LinearAlgebra.Factorization;
 
 namespace CustomVision //name of our app
 {

@@ -72,9 +72,6 @@
     <Folder Include="Resources\drawable\" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="MathNet.Numerics">
-      <Version>4.8.1</Version>
-    </PackageReference>
     <PackageReference Include="Xamarin.Android.Support.Animated.Vector.Drawable">
       <Version>27.0.2</Version>
     </PackageReference>
