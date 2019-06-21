@@ -25,6 +25,8 @@ using Org.Opencv.Core;
 using Org.Opencv.Imgproc;
 using Size = Org.Opencv.Core.Size;
 using Android.Hardware;
+using MathNet.Numerics.LinearAlgebra;
+using MathNet.Numerics.LinearAlgebra.Factorization;
 
 namespace CustomVision //name of our app
 {
@@ -650,6 +652,47 @@ namespace CustomVision //name of our app
             
         }
 
+        public static Lines deriveLineInfo(double x1, double x2, double y1, double y2)
+        {
+            Lines line = new Lines();
+            double m = (y2 - y1) / (x2 - x1);
+            line.b = y1 - (m * x1);
+            line.m = -1 * m;
+            line.y = 1;
+            return line;
+        }
+
+        public static Mat solve2D(Lines[] lines)
+        {
+            /*A = np.array([[e.xc, e.yc] for e in eqns], dtype = 'float')
+                B = np.array([e.b for e in eqns], dtype = 'float')
+                valid, soln = cv2.solve(A, B, flags = cv2.DECOMP_SVD)
+                assert valid, "No solution found"
+                return soln*/
+            //double[,] aArray = new double[lines.Length, 2];
+            //double[] bArray = new double[lines.Length];
+            Mat a = new Mat(lines.Length, 2, CvType.Cv32f);
+            Mat b = new Mat(lines.Length, 1, CvType.Cv32f);
+
+            for (int i = 0; i < lines.Length; i++)
+            {
+                //aArray[i, 0] = lines[i].m;
+                //aArray[i, 1] = lines[i].y;
+                //bArray[i] = lines[i].b;
+                a.Put(i, 0, lines[i].m);
+                a.Put(i, 1, lines[i].y);
+                b.Put(i, 0, lines[i].b);
+
+                Log.Debug("iowa", "line (y, m, b) " + i + ": " + lines[i].y + ", " + lines[i].m + ", " +
+                    lines[i].b);
+            }
+            
+            Mat dst = new Mat();
+
+            Core.Solve(a, b, dst, Core.DecompSvd);
+            return dst;
+        }
+
         public static void ImplementImageProcessing(Bitmap resizedBitmap,int prefix)
         {
             
@@ -691,102 +734,117 @@ namespace CustomVision //name of our app
             {
                 lines = sharpLines;
             }
-            double sumOfAngle = 0.0;
-            for (int x = 0; x < lines.Rows(); x++)
+
+            if (lines.Rows() > 0)
             {
-                double[] vec = lines.Get(x, 0);
-                double x1 = vec[0],
-                       y1 = vec[1],
-                       x2 = vec[2],
-                       y2 = vec[3];
-                Org.Opencv.Core.Point start = new Org.Opencv.Core.Point(x1, y1);
-                Org.Opencv.Core.Point end = new Org.Opencv.Core.Point(x2, y2);
-                double dx = x1 - x2;
-                double dy = y1 - y2;
-                double dist = Math.Sqrt(dx * dx + dy * dy);
-                double angle = Math.Atan2(dy, dx) * (float)(180 / Math.PI); //measure slope
-                if (angle < 0)
+                Lines[] lineInfos = new Lines[lines.Rows()];
+                int idx = 0;
+
+                double sumOfAngle = 0.0;
+                for (int x = 0; x < lines.Rows(); x++)
                 {
-                    angle = angle + 180;
+                    double[] vec = lines.Get(x, 0);
+                    double x1 = vec[0],
+                           y1 = vec[1],
+                           x2 = vec[2],
+                           y2 = vec[3];
+                    Org.Opencv.Core.Point start = new Org.Opencv.Core.Point(x1, y1);
+                    Org.Opencv.Core.Point end = new Org.Opencv.Core.Point(x2, y2);
+                    double dx = x1 - x2;
+                    double dy = y1 - y2;
+                    double dist = Math.Sqrt(dx * dx + dy * dy);
+                    double angle = Math.Atan2(dy, dx) * (float)(180 / Math.PI); //measure slope
+                    if (angle < 0)
+                    {
+                        angle = angle + 180;
+                    }
+
+                    Imgproc.Line(imgMat, start, end, new Scalar(0, 255, 0, 255), 1);
+                    sumOfAngle += angle;
+
+                    lineInfos[idx] = deriveLineInfo(x1, x2, y1, y2);
+                    idx++;
                 }
 
-                Imgproc.Line(imgMat, start, end, new Scalar(0, 255, 0, 255), 1);
-                sumOfAngle += angle; 
+                Mat answer = solve2D(lineInfos);
+                Org.Opencv.Core.Point point = new Org.Opencv.Core.Point();
+                point.X = answer.Get(0, 0)[0];
+                point.Y = answer.Get(1, 0)[0];
+                Imgproc.Circle(imgMat, point, 1, new Scalar(0, 255, 0, 255), 5);
 
-            }
+                sumOfAngle /= lines.Rows(); //average of slopes
+                int lineNum = lines.Rows();
 
-            sumOfAngle /= lines.Rows(); //average of slopes
-            int lineNum = lines.Rows();
-            
-            MainActivity.SaveLog_thres(sumOfAngle, DateTime.Now, prefix);
-            
+                MainActivity.SaveLog_thres(sumOfAngle, DateTime.Now, prefix);
 
-            //Log.Error("iowa", "angle print");
-            //Console.WriteLine(sumOfAngle);
 
-            //convert Mat to Bitmap again
-            Utils.MatToBitmap(imgMat, resizedBitmap);
+                //Log.Error("iowa", "angle print");
+                //Console.WriteLine(sumOfAngle);
 
-            //Release all Mats
-            imgMat.Release();
-            cannyMat.Release();
-            lines.Release();
-            double veerRight_Thres = 65.0;
-            double veerLeft_Thres = 115.0; 
+                //convert Mat to Bitmap again
+                Utils.MatToBitmap(imgMat, resizedBitmap);
 
-            if (lineNum != 0)
-            {
-                if (sumOfAngle < veerRight_Thres)
+                //Release all Mats
+                imgMat.Release();
+                cannyMat.Release();
+                lines.Release();
+                double veerRight_Thres = 65.0;
+                double veerLeft_Thres = 115.0;
+
+                if (lineNum != 0)
                 {
-                    currentLabel = labels[2];
+                    if (sumOfAngle < veerRight_Thres)
+                    {
+                        currentLabel = labels[2];
+                    }
+                    else if (sumOfAngle > veerLeft_Thres)
+                    {
+                        currentLabel = labels[1];
+                    }
+                    else if (sumOfAngle >= veerRight_Thres && sumOfAngle <= veerLeft_Thres)
+                    {
+                        currentLabel = labels[0];
+                    }
                 }
-                else if (sumOfAngle > veerLeft_Thres)
+                StoreResult(currentLabel);
+                SaveLog("current result: " + currentLabel, DateTime.Now, prefix);
+                string bestResultSoFar = GetTopResult(labels);
+                String curOutput = null;
+                if (bestResultSoFar == null)
                 {
-                    currentLabel = labels[1];
+                    curOutput = currentLabel;
                 }
-                else if (sumOfAngle >= veerRight_Thres && sumOfAngle <= veerLeft_Thres)
+                else
                 {
-                    currentLabel = labels[0];
+                    SaveLog("best result found from image processing: " + bestResultSoFar, DateTime.Now, prefix);
+                    curOutput = bestResultSoFar;
                 }
-            }
-            StoreResult(currentLabel);
-            SaveLog("current result: " + currentLabel, DateTime.Now, prefix);
-            string bestResultSoFar=GetTopResult(labels);
-            String curOutput = null;
-            if (bestResultSoFar == null)
-            {
-                curOutput = currentLabel;
-            }
-            else
-            {
-                SaveLog("best result found from image processing: " + bestResultSoFar, DateTime.Now, prefix);
-                curOutput = bestResultSoFar;
-            }
-            // string[] input = { "inlane", "left", "right" }
-            
-            if (curOutput == labels[2]) //going right
-            {
-                Speak(labels[1], prefix); //speaking left
-            }
-            else if (curOutput == labels[1]) //going left
-            {
-                Speak(labels[2], prefix); //speaking right
-            }
-            else if(curOutput == labels[0])// going inlane
-            {
-                if (previousOutput != curOutput && previousOutput != null) //checking if previous label = left or right
-                {
-                    // play ding
-                    MainActivity.SaveLog("in lane ding play", DateTime.Now, prefix);
-                    mPlayer.Start();
-                }
-            } else
-            {
-                MainActivity.SaveLog("no speaking or ding", DateTime.Now, prefix);
-            }
+                // string[] input = { "inlane", "left", "right" }
 
-            previousOutput = curOutput; // store previous output
+                if (curOutput == labels[2]) //going right
+                {
+                    Speak(labels[1], prefix); //speaking left
+                }
+                else if (curOutput == labels[1]) //going left
+                {
+                    Speak(labels[2], prefix); //speaking right
+                }
+                else if (curOutput == labels[0])// going inlane
+                {
+                    if (previousOutput != curOutput && previousOutput != null) //checking if previous label = left or right
+                    {
+                        // play ding
+                        MainActivity.SaveLog("in lane ding play", DateTime.Now, prefix);
+                        mPlayer.Start();
+                    }
+                }
+                else
+                {
+                    MainActivity.SaveLog("no speaking or ding", DateTime.Now, prefix);
+                }
 
+                previousOutput = curOutput; // store previous output
+            }
         }
 
         private static Mat DetectColor(Mat img)
@@ -865,6 +923,29 @@ namespace CustomVision //name of our app
         }
     }
 
+    public struct Lines
+    {
+        public double m, b, y;
+
+        public Lines(double slope, double intercept, double yc)
+        {
+            m = slope;
+            b = intercept;
+            y = yc;
+        }
+    }
+
+    public struct Intersect
+    {
+        public double x, y;
+
+        public Intersect(double xPos, double yPos)
+        {
+            x = xPos;
+            y = yPos;
+        }
+    }
+
     public class BitmapPrefix
     {
         public Bitmap Bitmap { get; set; }
@@ -916,7 +997,7 @@ namespace CustomVision //name of our app
                             Log.Debug("iowa", "this is the front camera.");
                             int cx = bitmap.Width / 2;
                             int cy = bitmap.Height / 2;
-                            Matrix matrix = new Matrix();
+                            Android.Graphics.Matrix matrix = new Android.Graphics.Matrix();
                             matrix.PostScale(-1, 1, cx, cy);
                             bitmap = Bitmap.CreateBitmap(bitmap, 0, 0, bitmap.Width, bitmap.Height, matrix, true);
                         }
@@ -935,7 +1016,7 @@ namespace CustomVision //name of our app
                         Log.Debug("iowa", "this is the front camera.");
                         int cx = bitmap.Width / 2;
                         int cy = bitmap.Height / 2;
-                        Matrix matrix = new Matrix();
+                        Android.Graphics.Matrix matrix = new Android.Graphics.Matrix();
                         if (MainActivity.cameraFacing == (int)LensFacing.Back)
                         {
                             matrix.PostScale(-1, 1, cx, cy);
@@ -957,7 +1038,7 @@ namespace CustomVision //name of our app
                         int w = resizedBitmap.Width;
                         int h = resizedBitmap.Height;
                         BitmapPrefix bitmapPrefix = new BitmapPrefix(resizedBitmap, prefix); // **TODO
-                        var matrix = new Matrix();
+                        /*var matrix = new Android.Graphics.Matrix();
                         float angle = -1 * (float)MainActivity.rotatedAngle;
                         matrix.PostRotate(angle);
                         resizedBitmap = Bitmap.CreateBitmap(resizedBitmap, 0, 0, resizedBitmap.Width, resizedBitmap.Height, matrix, true);
@@ -1011,16 +1092,16 @@ namespace CustomVision //name of our app
                         int cy = resizedBitmap.Height / 2 - (int)c_height / 2;       
                         resizedBitmap = Bitmap.CreateBitmap(resizedBitmap, cx, cy, (int)c_width, (int)c_height);
                         ///End of maximum rectangle calculation from rotated image//
-
+                        */
                         MainActivity.ImplementImageProcessing(resizedBitmap,prefix);
                         //Utils.MatToBitmap(imgMat, resizedBitmap);
                         MainActivity.SaveLog("created bitmap", DateTime.Now, prefix); // write when the bitmap is created to the log
-                        BitmapPrefix bitmapPrefixCropped = new BitmapPrefix(resizedBitmap, prefix); // **TODO
+                        //BitmapPrefix bitmapPrefixCropped = new BitmapPrefix(resizedBitmap, prefix); // **TODO
                         if (!MainActivity.bc.IsAddingCompleted) // **TODO
                         {
                             MainActivity.bc.Add(bitmapPrefix); // **TODO
-                            MainActivity.bc.Add(bitmapPrefixRotated); // **TODO
-                            MainActivity.bc.Add(bitmapPrefixCropped); // **TODO
+                            //MainActivity.bc.Add(bitmapPrefixRotated); // **TODO
+                            //MainActivity.bc.Add(bitmapPrefixCropped); // **TODO
                             //MainActivity.RecognizeImage(resizedBitmap, prefix); // call the classifier to recognize the resizedimage
                         }
                     }
