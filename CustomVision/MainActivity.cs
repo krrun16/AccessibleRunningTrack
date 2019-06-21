@@ -723,8 +723,8 @@ namespace CustomVision //name of our app
                 a.Put(i, 1, lines[i].y);
                 b.Put(i, 0, lines[i].b);
 
-                Log.Debug("iowa", "line (y, m, b) " + i + ": " + lines[i].y + ", " + lines[i].m + ", " +
-                    lines[i].b);
+                //Log.Debug("iowa", "line (y, m, b) " + i + ": " + lines[i].y + ", " + lines[i].m + ", " +
+                //    lines[i].b);
             }
 
             Mat dst = new Mat();
@@ -772,7 +772,7 @@ namespace CustomVision //name of our app
 
             if (sharpLines.Rows() < 20)
             {
-                lines = sharpLines;
+                //lines = sharpLines;
             }
 
             if (lines.Rows() > 0)
@@ -799,23 +799,55 @@ namespace CustomVision //name of our app
                         angle = angle + 180;
                     }
 
-                    Imgproc.Line(imgMat, start, end, new Scalar(0, 255, 0, 255), 1);
+                    
                     sumOfAngle += angle;
 
-                    lineInfos[idx] = deriveLineInfo(x1, x2, y1, y2);
-                    idx++;
+                    if (x1 != x2) // we choose to reject perfectly vertical lines because the slope and hene
+                        // y-intercepts are both infinity. This throws off the linear solver and returns 0,0
+                        // slope is rise over run, so it would be rise/0 = infinity
+                    {
+                        Imgproc.Line(imgMat, start, end, new Scalar(0, 255, 0, 255), 1);
+                        lineInfos[idx] = deriveLineInfo(x1, x2, y1, y2);
+                        idx++;
+                    }
                 }
 
-                Mat answer = solve2D(lineInfos);
-                Org.Opencv.Core.Point point = new Org.Opencv.Core.Point();
-                point.X = answer.Get(0, 0)[0];
-                point.Y = answer.Get(1, 0)[0];
-                Imgproc.Circle(imgMat, point, 1, new Scalar(0, 255, 0, 255), 5);
+                if (lineInfos.Length >= 2) // since we have two unknowns, x and y, we need at least 2 lines
+                {
+                    Mat answer = solve2D(lineInfos);
+                    Org.Opencv.Core.Point point = new Org.Opencv.Core.Point();
+                    point.X = answer.Get(0, 0)[0];
+                    point.Y = answer.Get(1, 0)[0];
+                    Imgproc.Circle(imgMat, point, 1, new Scalar(0, 255, 0, 255), 5);
+                    double intersect_dist = point.X;
+                    MainActivity.SaveLog_thres(intersect_dist, DateTime.Now, prefix);
 
-                sumOfAngle /= lines.Rows(); //average of slopes
-                int lineNum = lines.Rows();
-                double intersect_dist = point.X;
-                MainActivity.SaveLog_thres(intersect_dist, DateTime.Now, prefix); 
+                    double inlane_min = 84;
+                    double inlane_max = 140;
+                    
+                    if (intersect_dist < inlane_min)
+                    {
+                        currentLabel = labels[2];
+                    }
+                    else if (intersect_dist > inlane_max)
+                    {
+                        currentLabel = labels[1];
+                    }
+                    else if (intersect_dist >= inlane_min && intersect_dist <= inlane_max)
+                    {
+                        currentLabel = labels[0];
+                    }
+                    
+                } else
+                {
+                    currentLabel = "not_enough_lines";
+                }
+
+                
+
+                //sumOfAngle /= lines.Rows(); //average of slopes
+                //int lineNum = lines.Rows();
+
                 //Log.Error("iowa", "angle print");
                 //Console.WriteLine(sumOfAngle);
 
@@ -829,26 +861,9 @@ namespace CustomVision //name of our app
                 // double veerRight_Thres = 65.0;
                 //double veerLeft_Thres = 115.0;
                 
-                double inlane_min = 95.0;
-                double inlane_max = 140.0;
-
-                if (lineNum != 0)
-                {
-                    if (intersect_dist < inlane_min)
-                    {
-                        currentLabel = labels[2];
-                    }
-                    else if (intersect_dist > inlane_max)
-                    {
-                        currentLabel = labels[1];
-                    }
-                    else if (intersect_dist >= inlane_min && intersect_dist <= inlane_max)
-                    {
-                        currentLabel = labels[0];
-                    }
-                }
+                
                 StoreResult(currentLabel);
-                SaveLog("current result: " + lineNum + "_" + fileName + "_" + currentLabel, DateTime.Now, prefix);
+                SaveLog("current result: " + lineInfos.Length + "_" + fileName + "_" + currentLabel, DateTime.Now, prefix);
                 string bestResultSoFar = GetTopResult(labels);
                 String curOutput = null;
                 if (bestResultSoFar == null)
@@ -888,7 +903,7 @@ namespace CustomVision //name of our app
                 }
                 else
                 {
-                    MainActivity.SaveLog("no speaking or ding", DateTime.Now, prefix);
+                    MainActivity.SaveLog("no conclusion made", DateTime.Now, prefix);
                 }
 
                 previousOutput = curOutput; // store previous output
@@ -965,7 +980,7 @@ namespace CustomVision //name of our app
                     mGravity[2] = mGravity[2] / norm_of_gravity;
 
                     rotatedAngle = 180 * (Math.Atan2(mGravity[0], mGravity[1]) / Math.PI);
-                    Log.Debug("IOWA", "rotatedAngle: " + rotatedAngle);
+                    //Log.Debug("IOWA", "rotatedAngle: " + rotatedAngle);
                 }
             }
         }
