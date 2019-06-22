@@ -798,15 +798,45 @@ namespace CustomVision //name of our app
                     {
                         angle = angle + 180;
                     }
-
-                    
                     sumOfAngle += angle;
 
-                    if (x1 != x2) // we choose to reject perfectly vertical lines because the slope and hene
+                    if (x1 != x2 && Math.Min(y1,y2)<0.75*resizedBitmap.Height)  // we choose to reject perfectly vertical lines because the slope and hene
                         // y-intercepts are both infinity. This throws off the linear solver and returns 0,0
                         // slope is rise over run, so it would be rise/0 = infinity
                     {
-                        Imgproc.Line(imgMat, start, end, new Scalar(0, 255, 0, 255), 1);
+                        //Imgproc.Line(imgMat, start, end, new Scalar(0, 255, 0, 255), 1);
+                        if (angle >= -180 && angle < -135)
+                        {
+                            Imgproc.Line(imgMat, start, end, new Scalar(0, 255, 0, 255), 4); //green
+                        }
+                        else if (angle >= -135 && angle < -90)
+                        {
+                            Imgproc.Line(imgMat, start, end, new Scalar(255, 0, 0, 255), 4); //red
+                        }
+                        else if (angle >= -90 && angle < -45)
+                        {
+                            Imgproc.Line(imgMat, start, end, new Scalar(0, 0, 255, 255), 4); //blue - DNE
+                        }
+                        else if (angle >= -45 && angle < 0)
+                        {
+                            Imgproc.Line(imgMat, start, end, new Scalar(128, 128, 0, 255), 4); //yellow - DNE
+                        }
+                        else if (angle >= 0 && angle < 45)
+                        {
+                            Imgproc.Line(imgMat, start, end, new Scalar(0, 128, 128, 255), 4); //cyan - DNE
+                        }
+                        else if (angle >= 45 && angle < 90)
+                        {
+                            Imgproc.Line(imgMat, start, end, new Scalar(128, 0, 128, 255), 4); //magenta - DNE
+                        }
+                        else if (angle >= 90 && angle < 135)
+                        {
+                            Imgproc.Line(imgMat, start, end, new Scalar(255, 255, 255, 255), 4); // white
+                        }
+                        else if (angle >= 135 && angle < 180)
+                        {
+                            Imgproc.Line(imgMat, start, end, new Scalar(0, 0, 0, 255), 4); //black
+                        }
                         lineInfos[idx] = deriveLineInfo(x1, x2, y1, y2);
                         idx++;
                     }
