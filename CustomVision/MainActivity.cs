@@ -14,7 +14,6 @@ using System.Collections.Generic;
 using Android.Media;
 using System.Threading;
 using System.Collections.Concurrent;
-using Java.Nio;
 using Android.Renderscripts;
 using Type = Android.Renderscripts.Type;
 using Android.Content;
@@ -111,14 +110,13 @@ namespace CustomVision //name of our app
 
     [Activity(Label = "@string/app_name", MainLauncher = false, Icon = "@mipmap/icon", Theme = "@style/MyTheme", ScreenOrientation = ScreenOrientation.Portrait)]
     public class MainActivity : AppCompatActivity, TextureView.ISurfaceTextureListener, 
-        TextToSpeech.IOnInitListener, ILoaderCallbackInterface, Android.Hardware.ISensorEventListener
+        TextToSpeech.IOnInitListener, ILoaderCallbackInterface, ISensorEventListener
     {
         private static Context context;
         public static int cameraFacing;
         public static TextureView textureView;
         private static readonly string FOLDER_NAME = "/CustomVision";
         private static int IMAGE_FOLDER_COUNT = 1;
-        public static readonly ImageClassifier imageClassifier = new ImageClassifier();
         public static Android.Util.Size previewSize;
         public static ImageReader imageReader;
         internal static CameraDevice cameraDevice;
@@ -134,9 +132,8 @@ namespace CustomVision //name of our app
         private static Task task;
         private static Task task2;
         private static readonly object locker = new object();
-        public static bool show_video = false;
         public static string PreviousText = "noLabel";
-        private static String previousOutput = null;
+        private static string previousOutput = null;
 
         private static readonly string[] permissions = {
             Manifest.Permission.WriteExternalStorage,
@@ -152,8 +149,8 @@ namespace CustomVision //name of our app
         public static bool wait = false;
 
         static readonly object _syncLock = new object();
-        private Android.Hardware.SensorManager sensorManager;
-        private Android.Hardware.Sensor gsensor;
+        private SensorManager sensorManager;
+        private Sensor gsensor;
         private float[] mGravity = new float[3];
         public static double rotatedAngle;
 
@@ -161,20 +158,16 @@ namespace CustomVision //name of our app
         {
             base.OnCreate(savedInstanceState);
             context = ApplicationContext;
-            show_video = true;
             wait = Intent.GetBooleanExtra("wait", false);
             cameraFacing = (int)LensFacing.Back;
-            sensorManager = (Android.Hardware.SensorManager)GetSystemService(SensorService);
-            gsensor = sensorManager.GetDefaultSensor(Android.Hardware.SensorType.Accelerometer);
+            sensorManager = (SensorManager)GetSystemService(SensorService);
+            gsensor = sensorManager.GetDefaultSensor(SensorType.Accelerometer);
 
             string sdcardPath = Android.OS.Environment.ExternalStorageDirectory.Path + 
                 FOLDER_NAME + "/" + IMAGE_FOLDER_COUNT;
-            if (show_video)
-            {
-                textureView = new TextureView(this);
-                SetContentView(textureView);
-                Window.SetFlags(WindowManagerFlags.KeepScreenOn, WindowManagerFlags.KeepScreenOn);
-            }
+            textureView = new TextureView(this);
+            SetContentView(textureView);
+            Window.SetFlags(WindowManagerFlags.KeepScreenOn, WindowManagerFlags.KeepScreenOn);
 
             if (Directory.Exists(sdcardPath))
             {
@@ -195,11 +188,13 @@ namespace CustomVision //name of our app
                 tts = new TextToSpeech(this, this);
             }
             mPlayer = MediaPlayer.Create(this, Resource.Raw.sound);
-            if (wait == true)
+            if (wait)
             {
-                timer = new System.Timers.Timer();
-                timer.Interval = 30000;
-                timer.Enabled = true;
+                timer = new System.Timers.Timer
+                {
+                    Interval = 30000,
+                    Enabled = true
+                };
                 timer.Elapsed += (object sender, System.Timers.ElapsedEventArgs e) =>
                 {
                     timer.Stop();
@@ -240,9 +235,9 @@ namespace CustomVision //name of our app
             }
             OpenBackgroundThread();
 
-            sensorManager.RegisterListener(this, gsensor, Android.Hardware.SensorDelay.Fastest);
+            sensorManager.RegisterListener(this, gsensor, SensorDelay.Fastest);
 
-            if (show_video && textureView.IsAvailable || !show_video)
+            if (textureView.IsAvailable)
             {
                 if (cameraDevice == null)
                 {
@@ -250,7 +245,7 @@ namespace CustomVision //name of our app
                     SetUpCamera(cameraManager);
                     OpenCamera(cameraManager);
                 }
-            } else if (show_video && !textureView.IsAvailable)
+            } else
             {
                 textureView.SurfaceTextureListener = this;
             }
@@ -271,8 +266,7 @@ namespace CustomVision //name of our app
                         SaveLog("created png", DateTime.Now, bitmapPrefix.Prefix);
                         byte[] png = byteArrayOutputStream.ToArray();
                         SaveBitmap(png, bitmapPrefix.Prefix);
-                        //bitmapPrefix.Bitmap.Dispose(); //release the memory to handle OutOfMemory error
-                        //**TODO: why is this commented out?
+                        bitmapPrefix.Bitmap.Dispose(); //release the memory to handle OutOfMemory error
                     }
                 }
                 catch (InvalidOperationException)
@@ -300,7 +294,6 @@ namespace CustomVision //name of our app
 
         protected override void OnStop()
         {
-            
             base.OnStop();
             tts.Stop();
             tts.Shutdown();
@@ -352,22 +345,15 @@ namespace CustomVision //name of our app
             try
             {
                 BC_SaveImages();
-                if(show_video)
-                {
-                    SurfaceTexture surfaceTexture = textureView.SurfaceTexture;
-                    surfaceTexture.SetDefaultBufferSize(previewSize.Width, previewSize.Height);
-                    Surface previewSurface = new Surface(surfaceTexture);
-                    captureRequestBuilder = cameraDevice.CreateCaptureRequest(CameraTemplate.Preview);
-                    captureRequestBuilder.AddTarget(previewSurface);
-                    captureRequestBuilder.AddTarget(imageReader.Surface);
-                    cameraDevice.CreateCaptureSession(new List<Surface>() { previewSurface,
-                        imageReader.Surface }, new CameraCaptureStateCallback(), backgroundHandler);
-                } else
-                {
-                    captureRequestBuilder = cameraDevice.CreateCaptureRequest(CameraTemplate.Preview);
-                    captureRequestBuilder.AddTarget(imageReader.Surface);
-                    cameraDevice.CreateCaptureSession(new List<Surface>() { imageReader.Surface }, new CameraCaptureStateCallback(), backgroundHandler);
-                }
+                
+                SurfaceTexture surfaceTexture = textureView.SurfaceTexture;
+                surfaceTexture.SetDefaultBufferSize(previewSize.Width, previewSize.Height);
+                Surface previewSurface = new Surface(surfaceTexture);
+                captureRequestBuilder = cameraDevice.CreateCaptureRequest(CameraTemplate.Preview);
+                captureRequestBuilder.AddTarget(previewSurface);
+                captureRequestBuilder.AddTarget(imageReader.Surface);
+                cameraDevice.CreateCaptureSession(new List<Surface>() { previewSurface,
+                    imageReader.Surface }, new CameraCaptureStateCallback(), backgroundHandler);
             }
             catch (CameraAccessException e)
             {
@@ -436,19 +422,6 @@ namespace CustomVision //name of our app
 
         public void OnSurfaceTextureUpdated(SurfaceTexture surface)
         {
-        }
-
-        public static void RecognizeImage(Bitmap rgbBitmap, int prefix)
-        {
-            if(imageClassifier.RecognizeImage1(rgbBitmap, prefix) == "straight")
-            {
-                string res = imageClassifier.RecognizeImage2(rgbBitmap, prefix);
-                SaveLog("Recognize image", DateTime.Now, prefix);
-            }
-            else
-            {
-               SaveLog("Curve Image", DateTime.Now, prefix);
-            }
         }
 
         //Update the result in the list
@@ -594,10 +567,7 @@ namespace CustomVision //name of our app
                         previewSize = streamConfigurationMap.GetOutputSizes(
                             (int)ImageFormatType.Yuv420888)[0];
 
-                        if (show_video)
-                        {
-                            SetAspectRatioTextureView(previewSize.Width, previewSize.Height);
-                        }
+                        SetAspectRatioTextureView(previewSize.Width, previewSize.Height);
 
                         imageReader = ImageReader.NewInstance(previewSize.Width, previewSize.Height, 
                             ImageFormatType.Yuv420888, 1);
@@ -650,7 +620,7 @@ namespace CustomVision //name of our app
             
         }
 
-        public static Lines deriveLineInfo(double x1, double x2, double y1, double y2)
+        public static Lines DeriveLineInfo(double x1, double x2, double y1, double y2)
         {
             Lines line = new Lines();
             double m = (y2 - y1) / (x2 - x1);
@@ -660,29 +630,16 @@ namespace CustomVision //name of our app
             return line;
         }
 
-        public static Mat solve2D(Lines[] lines)
+        public static Mat Solve2D(Lines[] lines)
         {
-            /*A = np.array([[e.xc, e.yc] for e in eqns], dtype = 'float')
-                B = np.array([e.b for e in eqns], dtype = 'float')
-                valid, soln = cv2.solve(A, B, flags = cv2.DECOMP_SVD)
-                assert valid, "No solution found"
-                return soln*/
-            //double[,] aArray = new double[lines.Length, 2];
-            //double[] bArray = new double[lines.Length];
             Mat a = new Mat(lines.Length, 2, CvType.Cv32f);
             Mat b = new Mat(lines.Length, 1, CvType.Cv32f);
 
             for (int i = 0; i < lines.Length; i++)
             {
-                //aArray[i, 0] = lines[i].m;
-                //aArray[i, 1] = lines[i].y;
-                //bArray[i] = lines[i].b;
                 a.Put(i, 0, lines[i].m);
                 a.Put(i, 1, lines[i].y);
                 b.Put(i, 0, lines[i].b);
-
-                //Log.Debug("iowa", "line (y, m, b) " + i + ": " + lines[i].y + ", " + lines[i].m + ", " +
-                //    lines[i].b);
             }
 
             Mat dst = new Mat();
@@ -693,70 +650,55 @@ namespace CustomVision //name of our app
 
         public static void ImplementImageProcessing(Bitmap resizedBitmap,int prefix)
         {
-            
-            Mat imgMat = new Mat();
+            // setting up image labels
             List<string> labels = new List<string>();
             string[] input = { "inlane", "left", "right" };
             labels.AddRange(input);
             string currentLabel = "";
+
+            // preparing image
+            Mat imgMat = new Mat();
             Utils.BitmapToMat(resizedBitmap, imgMat);
-            //imgMat = imgMat.Submat(imgMat.Height() - 2 * rgba.Height() / 8, top + height, left, left + width);
             imgMat = DetectColor(imgMat);
-            Mat cannyMat = new Mat();
-            Mat sharpCannyMat = new Mat();
+
+            // blur image
             Mat blurMat = new Mat();
-            Mat sharpMat = new Mat();
-            //Blur and detect edge
             Size ksize = new Size(9, 9);
             Imgproc.GaussianBlur(imgMat, blurMat, ksize, 0);
+
+            // creating a sharp image to then create a gray image
+            // Rumi explain what a mean_scalar is and why we use it
+            Mat sharpMat = new Mat();
             Core.AddWeighted(imgMat, 1.5, blurMat, -0.5, 0, sharpMat);
             Mat grayImg = new Mat();
             Imgproc.CvtColor(sharpMat, grayImg, Imgproc.ColorRgb2gray);
-            Org.Opencv.Core.Scalar mean_scalar = Core.Mean(grayImg);
-            //Log.Debug("iowa","mean"+mean_scalar);
-            Imgproc.Canny(sharpMat, sharpCannyMat, mean_scalar.Val[0] * 0.66, mean_scalar.Val[0] * 1.33);
+            Scalar mean_scalar = Core.Mean(grayImg);
+
+            // Detect edges
+            Mat cannyMat = new Mat();
             Imgproc.Canny(blurMat, cannyMat, mean_scalar.Val[0] * 0.66, mean_scalar.Val[0] * 1.33);
 
-            //Imgproc.Canny(sharpMat, sharpCannyMat, 50,150);
-            //Imgproc.Canny(blurMat, cannyMat, 50, 150);
-            //Detec lines from edge image
+            //Hough Line detection
             Mat lines = new Mat();
-            Mat sharpLines = new Mat();
             int threshold = 50;
             int minLineSize = 50;
             int lineGap = 8;
-            Imgproc.HoughLinesP(sharpCannyMat, sharpLines, 1, Math.PI / 180, threshold, minLineSize, lineGap);
             Imgproc.HoughLinesP(cannyMat, lines, 1, Math.PI / 180, threshold, minLineSize, lineGap);
 
-            if (sharpLines.Rows() < 20)
-            {
-                //lines = sharpLines;
-            }
-
-            if (lines.Rows() > 0)
+            if (lines.Rows() > 0) // lines exist in the image
             {
                 Lines[] lineInfos = new Lines[lines.Rows()];
                 int idx = 0;
 
-                double sumOfAngle = 0.0;
                 for (int x = 0; x < lines.Rows(); x++)
                 {
                     double[] vec = lines.Get(x, 0);
-                    double x1 = vec[0],
+                    double x1 = vec[0], 
                            y1 = vec[1],
                            x2 = vec[2],
                            y2 = vec[3];
                     Org.Opencv.Core.Point start = new Org.Opencv.Core.Point(x1, y1);
                     Org.Opencv.Core.Point end = new Org.Opencv.Core.Point(x2, y2);
-                    double dx = x1 - x2;
-                    double dy = y1 - y2;
-                    double dist = Math.Sqrt(dx * dx + dy * dy);
-                    double angle = Math.Atan2(dy, dx) * (float)(180 / Math.PI); //measure slope
-                    if (angle < 0)
-                    {
-                        angle = angle + 180;
-                    }
-                    sumOfAngle += angle;
 
                     if (x1 != x2 && Math.Min(y1, y2) < 0.75*resizedBitmap.Height)
                     // we choose to reject perfectly vertical lines because the slope and
@@ -764,33 +706,35 @@ namespace CustomVision //name of our app
                     // slope is rise over run, so it would be rise/0 = infinity
                     {
                         Imgproc.Line(imgMat, start, end, new Scalar(0, 255, 0, 255), 1);
-                        lineInfos[idx] = deriveLineInfo(x1, x2, y1, y2);
+                        lineInfos[idx] = DeriveLineInfo(x1, x2, y1, y2);
                         idx++;
                     }
                 }
 
                 if (lineInfos.Length >= 2) // since we have two unknowns, x and y, we need at least 2 lines
                 {
-                    Mat answer = solve2D(lineInfos);
-                    Org.Opencv.Core.Point point = new Org.Opencv.Core.Point();
-                    point.X = answer.Get(0, 0)[0];
-                    point.Y = answer.Get(1, 0)[0];
+                    Mat answer = Solve2D(lineInfos);
+                    Org.Opencv.Core.Point point = new Org.Opencv.Core.Point
+                    {
+                        X = answer.Get(0, 0)[0],
+                        Y = answer.Get(1, 0)[0]
+                    };
                     Imgproc.Circle(imgMat, point, 1, new Scalar(0, 255, 0, 255), 5);
                     double intersect_dist = point.X;
-                    MainActivity.SaveLog_thres(intersect_dist, DateTime.Now, prefix);
+                    SaveLog_thres(intersect_dist, DateTime.Now, prefix);
 
                     double inlane_min = 84;
                     double inlane_max = 140;
 
-                    if (intersect_dist < inlane_min)
+                    if (intersect_dist < inlane_min) // veering right
                     {
                         currentLabel = labels[2];
                     }
-                    else if (intersect_dist > inlane_max)
+                    else if (intersect_dist > inlane_max) // veering left
                     {
                         currentLabel = labels[1];
                     }
-                    else if (intersect_dist >= inlane_min && intersect_dist <= inlane_max)
+                    else if (intersect_dist >= inlane_min && intersect_dist <= inlane_max) // in lane
                     {
                         currentLabel = labels[0];
                     }
@@ -801,44 +745,21 @@ namespace CustomVision //name of our app
                     currentLabel = "not_enough_lines";
                 }
 
-                sumOfAngle /= lines.Rows(); //average of slopes
-                int lineNum = lines.Rows();
-
-                MainActivity.SaveLog_thres(sumOfAngle, DateTime.Now, prefix);
-
-
-                //Log.Error("iowa", "angle print");
-                //Console.WriteLine(sumOfAngle);
-
                 //convert Mat to Bitmap again
                 Utils.MatToBitmap(imgMat, resizedBitmap);
 
                 //Release all Mats
                 imgMat.Release();
+                blurMat.Release();
+                sharpMat.Release();
+                grayImg.Release();
                 cannyMat.Release();
                 lines.Release();
-                double veerRight_Thres = 65.0;
-                double veerLeft_Thres = 115.0;
 
-                if (lineNum != 0)
-                {
-                    if (sumOfAngle < veerRight_Thres)
-                    {
-                        currentLabel = labels[2];
-                    }
-                    else if (sumOfAngle > veerLeft_Thres)
-                    {
-                        currentLabel = labels[1];
-                    }
-                    else if (sumOfAngle >= veerRight_Thres && sumOfAngle <= veerLeft_Thres)
-                    {
-                        currentLabel = labels[0];
-                    }
-                }
                 StoreResult(currentLabel);
                 SaveLog("current result: " + currentLabel, DateTime.Now, prefix);
                 string bestResultSoFar = GetTopResult(labels);
-                String curOutput = null;
+                string curOutput = null;
                 if (bestResultSoFar == null)
                 {
                     curOutput = currentLabel;
@@ -848,7 +769,6 @@ namespace CustomVision //name of our app
                     SaveLog("best result found from image processing: " + bestResultSoFar, DateTime.Now, prefix);
                     curOutput = bestResultSoFar;
                 }
-                // string[] input = { "inlane", "left", "right" }
 
                 if (curOutput == labels[2]) //going right
                 {
@@ -863,20 +783,20 @@ namespace CustomVision //name of our app
                     if (previousOutput != curOutput && previousOutput != null) //checking if previous label = left or right
                     {
                         // play ding
-                        MainActivity.SaveLog("in lane ding play", DateTime.Now, prefix);
+                        SaveLog("in lane ding play", DateTime.Now, prefix);
                         mPlayer.Start();
                     }
                 }
                 else
                 {
-                    MainActivity.SaveLog("no conclusion made", DateTime.Now, prefix);
+                    SaveLog("no conclusion made", DateTime.Now, prefix);
                 }
 
                 previousOutput = curOutput; // store previous output
+            } else
+            {
+                SaveLog("no lines detected", DateTime.Now, prefix);
             }
-
-
-
         }
 
         private static Mat DetectColor(Mat img)
@@ -893,8 +813,6 @@ namespace CustomVision //name of our app
             mask1.Release();
             mask2.Release();
             hsvImg.Release();
-            //Core.Bitwise_not(output, output);
-
             return output;
         }
 
@@ -905,44 +823,17 @@ namespace CustomVision //name of our app
 
         void ISensorEventListener.OnSensorChanged(SensorEvent e)
         {
-            float alpha = 0.97f;
             lock (_syncLock)
             {
                 if (e.Sensor.Type == Android.Hardware.SensorType.Accelerometer)
                 {
-                    /*mGravity[0] = alpha * mGravity[0] + (1 - alpha)
-                            * e.Values[0];
-                    mGravity[1] = alpha * mGravity[1] + (1 - alpha)
-                            * e.Values[1];
-                    mGravity[2] = alpha * mGravity[2] + (1 - alpha)
-                            * e.Values[2];*/
-
-                    //commented out logs in case you want to explore individual values
-                    //Log.Debug("IOWA", "mGravity[0]: " + mGravity[0]);
-                    //Log.Debug("IOWA", "mGravity[1]: " + mGravity[1]);
-                    //Log.Debug("IOWA", "mGravity[2]: " + mGravity[2]);
-                    /*
-                    if (mGravity[1] < 9.8) // assume all is well if it is >= gravity
-                    {
-                        // implementation found from page 7 of: 
-                        // https://www.analog.com/media/en/technical-documentation/application-notes/AN-1057.pdf
-                        // see equation 13, where corresponding Figure 12c Y and Z axes are switched
-                        // based on the fact that the phone is upright.
-                        double numerator = Math.Sqrt(Math.Pow(mGravity[0], 2) + Math.Pow(mGravity[2], 2));
-                        rotatedAngle = Java.Lang.Math.ToDegrees(Math.Atan(numerator / mGravity[1]));
-                        if (mGravity[0] < 0)
-                        {
-                            rotatedAngle *= -1;
-                        }
-                        Log.Debug("IOWA", "rotatedAngle: " + rotatedAngle);
-                    }*/
-
-                    List<float> test = new List<float>(e.Values);
-                    mGravity = test.ToArray();
+                    List<float> tmp = new List<float>(e.Values);
+                    mGravity = tmp.ToArray();
 
                     // FINALLY found a useful solution; thank goodness for this particular stack overflow
                     // https://stackoverflow.com/questions/11175599/how-to-measure-the-tilt-of-the-phone-in-xy-plane-using-accelerometer-in-android/15149421#15149421
-                    float norm_of_gravity = (float)Math.Sqrt(Math.Pow(mGravity[0], 2) + Math.Pow(mGravity[1], 2) + Math.Pow(mGravity[2], 2));
+                    float norm_of_gravity = (float)Math.Sqrt(Math.Pow(mGravity[0], 2) + Math.Pow(mGravity[1], 2) + 
+                        Math.Pow(mGravity[2], 2));
                     //normalizing gravity to ensure no NaN answers for atan
                     mGravity[0] = mGravity[0] / norm_of_gravity;
                     mGravity[1] = mGravity[1] / norm_of_gravity;
@@ -1018,7 +909,7 @@ namespace CustomVision //name of our app
                     }
 
                     Bitmap bitmap = null;
-                    if(MainActivity.show_video && MainActivity.isReady == true)
+                    if(MainActivity.isReady)
                     {
                         // textureview is the region of the screen that contains the camera, 
                         // so get the picture with the same dimensions as the screen
@@ -1033,37 +924,11 @@ namespace CustomVision //name of our app
                             matrix.PostScale(-1, 1, cx, cy);
                             bitmap = Bitmap.CreateBitmap(bitmap, 0, 0, bitmap.Width, bitmap.Height, matrix, true);
                         }
-                    } else if(MainActivity.isReady == true)
-                    {
-                        MainActivity.SaveLog("begin bitmap conversion", DateTime.Now, prefix); // write when the photo can be processed to the log
-                        //yuv420888 update line 506 as well
-                        bitmap = MainActivity.YUV_420_888_toRGBIntrinsics(image);
-                        MainActivity.SaveLog("converted from yuv to bmp", DateTime.Now, prefix); // write when the photo can be processed to the log
-                        /*ByteBuffer buffer = image.GetPlanes()[0].Buffer;
-                        byte[] bytes = new byte[buffer.Capacity()];
-                        buffer.Get(bytes);
-                        bitmap = BitmapFactory.DecodeByteArray(bytes, 0, bytes.Length, 
-                            null);*/
-
-                        Log.Debug("iowa", "this is the front camera.");
-                        int cx = bitmap.Width / 2;
-                        int cy = bitmap.Height / 2;
-                        Matrix matrix = new Matrix();
-                        if (MainActivity.cameraFacing == (int)LensFacing.Back)
-                        {
-                            matrix.PostScale(-1, 1, cx, cy);
-                        }
-                        matrix.PostRotate(90);
-                        MainActivity.SaveLog("rotated photo", DateTime.Now, prefix); // write when the photo can be processed to the log
-                        bitmap = Bitmap.CreateBitmap(bitmap, 0, 0, bitmap.Width, bitmap.Height, matrix, true);
-                        MainActivity.SaveLog("create resized bitmap", DateTime.Now, prefix); // write when the photo can be processed to the log
                     }
 
                     if (bitmap != null)
                     {
-                        //retrieve the input size from the ImageClassifier
-                        int inputsize = MainActivity.imageClassifier.getInputSize();
-
+                        int inputsize = 224;
                         //resize the bitmap
                         Bitmap scaledBitmap = Bitmap.CreateScaledBitmap(bitmap, inputsize, inputsize, false);
                         Bitmap resizedBitmap = scaledBitmap.Copy(Bitmap.Config.Argb8888, false);
@@ -1126,7 +991,6 @@ namespace CustomVision //name of our app
                         ///End of maximum rectangle calculation from rotated image//
 
                         MainActivity.ImplementImageProcessing(resizedBitmap,prefix);
-                        //Utils.MatToBitmap(imgMat, resizedBitmap);
                         MainActivity.SaveLog("created bitmap", DateTime.Now, prefix); // write when the bitmap is created to the log
                         BitmapPrefix bitmapPrefixCropped = new BitmapPrefix(resizedBitmap, prefix); // **TODO
                         if (!MainActivity.bc.IsAddingCompleted) // **TODO
@@ -1134,7 +998,6 @@ namespace CustomVision //name of our app
                             MainActivity.bc.Add(bitmapPrefix); // **TODO
                             MainActivity.bc.Add(bitmapPrefixRotated); // **TODO
                             MainActivity.bc.Add(bitmapPrefixCropped); // **TODO
-                            //MainActivity.RecognizeImage(resizedBitmap, prefix); // call the classifier to recognize the resizedimage
                         }
                     }
                     image.Close(); // This closes the image so the phone no longer has to hold onto 
@@ -1145,5 +1008,3 @@ namespace CustomVision //name of our app
         }
     }
 }
-
-
