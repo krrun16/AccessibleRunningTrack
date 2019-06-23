@@ -650,6 +650,47 @@ namespace CustomVision //name of our app
             
         }
 
+        public static Lines deriveLineInfo(double x1, double x2, double y1, double y2)
+        {
+            Lines line = new Lines();
+            double m = (y2 - y1) / (x2 - x1);
+            line.b = y1 - (m * x1);
+            line.m = -1 * m;
+            line.y = 1;
+            return line;
+        }
+
+        public static Mat solve2D(Lines[] lines)
+        {
+            /*A = np.array([[e.xc, e.yc] for e in eqns], dtype = 'float')
+                B = np.array([e.b for e in eqns], dtype = 'float')
+                valid, soln = cv2.solve(A, B, flags = cv2.DECOMP_SVD)
+                assert valid, "No solution found"
+                return soln*/
+            //double[,] aArray = new double[lines.Length, 2];
+            //double[] bArray = new double[lines.Length];
+            Mat a = new Mat(lines.Length, 2, CvType.Cv32f);
+            Mat b = new Mat(lines.Length, 1, CvType.Cv32f);
+
+            for (int i = 0; i < lines.Length; i++)
+            {
+                //aArray[i, 0] = lines[i].m;
+                //aArray[i, 1] = lines[i].y;
+                //bArray[i] = lines[i].b;
+                a.Put(i, 0, lines[i].m);
+                a.Put(i, 1, lines[i].y);
+                b.Put(i, 0, lines[i].b);
+
+                //Log.Debug("iowa", "line (y, m, b) " + i + ": " + lines[i].y + ", " + lines[i].m + ", " +
+                //    lines[i].b);
+            }
+
+            Mat dst = new Mat();
+
+            Core.Solve(a, b, dst, Core.DecompSvd);
+            return dst;
+        }
+
         public static void ImplementImageProcessing(Bitmap resizedBitmap,int prefix)
         {
             
@@ -689,103 +730,152 @@ namespace CustomVision //name of our app
 
             if (sharpLines.Rows() < 20)
             {
-                lines = sharpLines;
+                //lines = sharpLines;
             }
-            double sumOfAngle = 0.0;
-            for (int x = 0; x < lines.Rows(); x++)
+
+            if (lines.Rows() > 0)
             {
-                double[] vec = lines.Get(x, 0);
-                double x1 = vec[0],
-                       y1 = vec[1],
-                       x2 = vec[2],
-                       y2 = vec[3];
-                Org.Opencv.Core.Point start = new Org.Opencv.Core.Point(x1, y1);
-                Org.Opencv.Core.Point end = new Org.Opencv.Core.Point(x2, y2);
-                double dx = x1 - x2;
-                double dy = y1 - y2;
-                double dist = Math.Sqrt(dx * dx + dy * dy);
-                double angle = Math.Atan2(dy, dx) * (float)(180 / Math.PI); //measure slope
-                if (angle < 0)
+                Lines[] lineInfos = new Lines[lines.Rows()];
+                int idx = 0;
+
+                double sumOfAngle = 0.0;
+                for (int x = 0; x < lines.Rows(); x++)
                 {
-                    angle = angle + 180;
+                    double[] vec = lines.Get(x, 0);
+                    double x1 = vec[0],
+                           y1 = vec[1],
+                           x2 = vec[2],
+                           y2 = vec[3];
+                    Org.Opencv.Core.Point start = new Org.Opencv.Core.Point(x1, y1);
+                    Org.Opencv.Core.Point end = new Org.Opencv.Core.Point(x2, y2);
+                    double dx = x1 - x2;
+                    double dy = y1 - y2;
+                    double dist = Math.Sqrt(dx * dx + dy * dy);
+                    double angle = Math.Atan2(dy, dx) * (float)(180 / Math.PI); //measure slope
+                    if (angle < 0)
+                    {
+                        angle = angle + 180;
+                    }
+                    sumOfAngle += angle;
+
+                    if (x1 != x2 && Math.Min(y1, y2) < 0.75*resizedBitmap.Height)
+                    // we choose to reject perfectly vertical lines because the slope and
+                    // y-intercepts are both infinity. This throws off the linear solver and returns 0,0
+                    // slope is rise over run, so it would be rise/0 = infinity
+                    {
+                        Imgproc.Line(imgMat, start, end, new Scalar(0, 255, 0, 255), 1);
+                        lineInfos[idx] = deriveLineInfo(x1, x2, y1, y2);
+                        idx++;
+                    }
                 }
 
-                Imgproc.Line(imgMat, start, end, new Scalar(0, 255, 0, 255), 1);
-                sumOfAngle += angle; 
-
-            }
-
-            sumOfAngle /= lines.Rows(); //average of slopes
-            int lineNum = lines.Rows();
-            
-            MainActivity.SaveLog_thres(sumOfAngle, DateTime.Now, prefix);
-            
-
-            //Log.Error("iowa", "angle print");
-            //Console.WriteLine(sumOfAngle);
-
-            //convert Mat to Bitmap again
-            Utils.MatToBitmap(imgMat, resizedBitmap);
-
-            //Release all Mats
-            imgMat.Release();
-            cannyMat.Release();
-            lines.Release();
-            double veerRight_Thres = 65.0;
-            double veerLeft_Thres = 115.0; 
-
-            if (lineNum != 0)
-            {
-                if (sumOfAngle < veerRight_Thres)
+                if (lineInfos.Length >= 2) // since we have two unknowns, x and y, we need at least 2 lines
                 {
-                    currentLabel = labels[2];
+                    Mat answer = solve2D(lineInfos);
+                    Org.Opencv.Core.Point point = new Org.Opencv.Core.Point();
+                    point.X = answer.Get(0, 0)[0];
+                    point.Y = answer.Get(1, 0)[0];
+                    Imgproc.Circle(imgMat, point, 1, new Scalar(0, 255, 0, 255), 5);
+                    double intersect_dist = point.X;
+                    MainActivity.SaveLog_thres(intersect_dist, DateTime.Now, prefix);
+
+                    double inlane_min = 84;
+                    double inlane_max = 140;
+
+                    if (intersect_dist < inlane_min)
+                    {
+                        currentLabel = labels[2];
+                    }
+                    else if (intersect_dist > inlane_max)
+                    {
+                        currentLabel = labels[1];
+                    }
+                    else if (intersect_dist >= inlane_min && intersect_dist <= inlane_max)
+                    {
+                        currentLabel = labels[0];
+                    }
+
                 }
-                else if (sumOfAngle > veerLeft_Thres)
+                else
                 {
-                    currentLabel = labels[1];
+                    currentLabel = "not_enough_lines";
                 }
-                else if (sumOfAngle >= veerRight_Thres && sumOfAngle <= veerLeft_Thres)
+
+                sumOfAngle /= lines.Rows(); //average of slopes
+                int lineNum = lines.Rows();
+
+                MainActivity.SaveLog_thres(sumOfAngle, DateTime.Now, prefix);
+
+
+                //Log.Error("iowa", "angle print");
+                //Console.WriteLine(sumOfAngle);
+
+                //convert Mat to Bitmap again
+                Utils.MatToBitmap(imgMat, resizedBitmap);
+
+                //Release all Mats
+                imgMat.Release();
+                cannyMat.Release();
+                lines.Release();
+                double veerRight_Thres = 65.0;
+                double veerLeft_Thres = 115.0;
+
+                if (lineNum != 0)
                 {
-                    currentLabel = labels[0];
+                    if (sumOfAngle < veerRight_Thres)
+                    {
+                        currentLabel = labels[2];
+                    }
+                    else if (sumOfAngle > veerLeft_Thres)
+                    {
+                        currentLabel = labels[1];
+                    }
+                    else if (sumOfAngle >= veerRight_Thres && sumOfAngle <= veerLeft_Thres)
+                    {
+                        currentLabel = labels[0];
+                    }
                 }
-            }
-            StoreResult(currentLabel);
-            SaveLog("current result: " + currentLabel, DateTime.Now, prefix);
-            string bestResultSoFar=GetTopResult(labels);
-            String curOutput = null;
-            if (bestResultSoFar == null)
-            {
-                curOutput = currentLabel;
-            }
-            else
-            {
-                SaveLog("best result found from image processing: " + bestResultSoFar, DateTime.Now, prefix);
-                curOutput = bestResultSoFar;
-            }
-            // string[] input = { "inlane", "left", "right" }
-            
-            if (curOutput == labels[2]) //going right
-            {
-                Speak(labels[1], prefix); //speaking left
-            }
-            else if (curOutput == labels[1]) //going left
-            {
-                Speak(labels[2], prefix); //speaking right
-            }
-            else if(curOutput == labels[0])// going inlane
-            {
-                if (previousOutput != curOutput && previousOutput != null) //checking if previous label = left or right
+                StoreResult(currentLabel);
+                SaveLog("current result: " + currentLabel, DateTime.Now, prefix);
+                string bestResultSoFar = GetTopResult(labels);
+                String curOutput = null;
+                if (bestResultSoFar == null)
                 {
-                    // play ding
-                    MainActivity.SaveLog("in lane ding play", DateTime.Now, prefix);
-                    mPlayer.Start();
+                    curOutput = currentLabel;
                 }
-            } else
-            {
-                MainActivity.SaveLog("no speaking or ding", DateTime.Now, prefix);
+                else
+                {
+                    SaveLog("best result found from image processing: " + bestResultSoFar, DateTime.Now, prefix);
+                    curOutput = bestResultSoFar;
+                }
+                // string[] input = { "inlane", "left", "right" }
+
+                if (curOutput == labels[2]) //going right
+                {
+                    Speak(labels[1], prefix); //speaking left
+                }
+                else if (curOutput == labels[1]) //going left
+                {
+                    Speak(labels[2], prefix); //speaking right
+                }
+                else if (curOutput == labels[0])// going inlane
+                {
+                    if (previousOutput != curOutput && previousOutput != null) //checking if previous label = left or right
+                    {
+                        // play ding
+                        MainActivity.SaveLog("in lane ding play", DateTime.Now, prefix);
+                        mPlayer.Start();
+                    }
+                }
+                else
+                {
+                    MainActivity.SaveLog("no conclusion made", DateTime.Now, prefix);
+                }
+
+                previousOutput = curOutput; // store previous output
             }
 
-            previousOutput = curOutput; // store previous output
+
 
         }
 
@@ -862,6 +952,29 @@ namespace CustomVision //name of our app
                     Log.Debug("IOWA", "rotatedAngle: " + rotatedAngle);
                 }
             }
+        }
+    }
+
+    public struct Lines
+    {
+        public double m, b, y;
+
+        public Lines(double slope, double intercept, double yc)
+        {
+            m = slope;
+            b = intercept;
+            y = yc;
+        }
+    }
+
+    public struct Intersect
+    {
+        public double x, y;
+
+        public Intersect(double xPos, double yPos)
+        {
+            x = xPos;
+            y = yPos;
         }
     }
 
