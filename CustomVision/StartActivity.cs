@@ -14,11 +14,11 @@ namespace CustomVision
     internal class StartActivity : AppCompatActivity
     {
         public static int PERMISSION_ALL = 0;
-        private Button startButton, startButtonNoVideo;
+        private Button startButton, startButtonTutorial;
         private Button StartButton => startButton ?? 
             (startButton = FindViewById<Button>(Resource.Id.start_btn));
-        private Button StartButtonNoVideo => startButtonNoVideo ?? 
-            (startButtonNoVideo = FindViewById<Button>(Resource.Id.start_btn_no_vid));
+        private Button StartButtonTutorial => startButtonTutorial ?? 
+            (startButtonTutorial = FindViewById<Button>(Resource.Id.start_btn_tutorial));
 
         private static readonly string[] permissions = {
             Manifest.Permission.WriteExternalStorage,
@@ -32,7 +32,7 @@ namespace CustomVision
             SetContentView(Resource.Layout.StartScreen);
            
             StartButton.Click += StartButton_Click;
-            StartButtonNoVideo.Click += StartButtonNoVideo_Click;
+            StartButtonTutorial.Click += StartButtonTutorial_Click;
         }
 
         private void StartButton_Click(object sender, EventArgs e)
@@ -42,7 +42,7 @@ namespace CustomVision
             StartActivity(m_activity);
         }
 
-        private void StartButtonNoVideo_Click(object sender, EventArgs e)
+        private void StartButtonTutorial_Click(object sender, EventArgs e)
         {
             Intent m_activity = new Intent(this, typeof(MainActivity));
             m_activity.PutExtra("wait", false);
