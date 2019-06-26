@@ -141,7 +141,7 @@ namespace CustomVision //name of our app
         };
         private static List<string> storeWindow = new List<string>();
         private static TextToSpeech tts;
-        private static readonly int WINDOW_SIZE = 10;
+        private static readonly int WINDOW_SIZE = 20;
         private static MediaPlayer mPlayer;
         private static MediaPlayer left;
         private static MediaPlayer right;
@@ -482,7 +482,7 @@ namespace CustomVision //name of our app
                         count++;
                     }
                 }
-                if (count >= 6)
+                if (count > WINDOW_SIZE/2)
                 {
                     return labels[i];
                 }
@@ -839,7 +839,17 @@ namespace CustomVision //name of our app
                     {
                         // play ding
                         SaveLog("in lane ding play", DateTime.Now, prefix);
-                        mPlayer.Start();
+                        if(left.IsPlaying)
+                        {
+                            left.Stop();
+                            left.Prepare();
+                        }
+                        else if(right.IsPlaying)
+                        {
+                            right.Stop();
+                            right.Prepare();
+                        }
+                        mPlayer.Start();  
                     }
                 }
                 else
