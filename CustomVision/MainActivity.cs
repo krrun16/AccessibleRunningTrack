@@ -816,14 +816,22 @@ namespace CustomVision //name of our app
                     // Speak(labels[1], prefix); 
                     SaveLog("speak " + "left", DateTime.Now, prefix);
                     //speaking left
-                    left.Start();
+                    if(!right.IsPlaying && !mPlayer.IsPlaying)
+                    {
+                        left.Start();
+                    }
+                    
                 }
                 else if (curOutput == labels[1]) //going left
                 {
                     // Speak(labels[2], prefix); 
                     SaveLog("speak " + "right", DateTime.Now, prefix);
                     //speaking right
-                    right.Start();
+                    if (!left.IsPlaying && !mPlayer.IsPlaying)
+                    {
+                        right.Start();
+
+                    }
                 }
                 else if (curOutput == labels[0])// going inlane
                 {
