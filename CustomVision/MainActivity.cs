@@ -142,7 +142,7 @@ namespace CustomVision //name of our app
         };
         private static List<string> storeWindow = new List<string>();
         private static TextToSpeech tts;
-        private static readonly int WINDOW_SIZE = 10;
+        private static readonly int WINDOW_SIZE = 30;
         private static MediaPlayer ding;
         private static MediaPlayer left;
         private static MediaPlayer right;
@@ -485,7 +485,7 @@ namespace CustomVision //name of our app
                         count++;
                     }
                 }
-                if (count >= 6)
+                if (count > WINDOW_SIZE/2)
                 {
                     return labels[i];
                 }
