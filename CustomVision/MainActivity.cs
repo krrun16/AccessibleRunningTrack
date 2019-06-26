@@ -128,7 +128,6 @@ namespace CustomVision //name of our app
         private int DSI_height;
         private int DSI_width;
         public static int canProcessImage = 0;
-        public static int canSpeak = 0;
         public static BlockingCollection<BitmapPrefix> bc = new BlockingCollection<BitmapPrefix>();
         private static Task task;
         private static Task task2;
@@ -143,7 +142,7 @@ namespace CustomVision //name of our app
         private static List<string> storeWindow = new List<string>();
         private static TextToSpeech tts;
         private static readonly int WINDOW_SIZE = 10;
-        private static MediaPlayer ding;
+        private static MediaPlayer mPlayer;
         private static MediaPlayer left;
         private static MediaPlayer right;
         private static MediaPlayer go;
@@ -207,7 +206,7 @@ namespace CustomVision //name of our app
                 }
                 tts = new TextToSpeech(this, this);
             }
-            ding = MediaPlayer.Create(this, Resource.Raw.sound);
+            mPlayer = MediaPlayer.Create(this, Resource.Raw.sound);
             left = MediaPlayer.Create(this, Resource.Raw.left);
             right = MediaPlayer.Create(this, Resource.Raw.right);
             go = MediaPlayer.Create(this, Resource.Raw.go);
@@ -229,7 +228,6 @@ namespace CustomVision //name of our app
                     go.Completion += delegate
                     {
                         isReady = true; //after 30 secs, ready to process the image
-                        Interlocked.Exchange(ref canSpeak, 1); // equivalent to canSpeak = 1
                     };
                     timer.Dispose();
                 };
@@ -237,7 +235,6 @@ namespace CustomVision //name of our app
             } else
             {
                 isReady = true; // for tutorial button wait = false, directly start processing
-                Interlocked.Exchange(ref canSpeak, 1); // equivalent to canSpeak = 1
             }
             
         }
@@ -320,8 +317,8 @@ namespace CustomVision //name of our app
             FinishAffinity();
             go.Stop();
             go.Release();
-            ding.Stop();
-            ding.Release();
+            mPlayer.Stop();
+            mPlayer.Release();
             left.Stop();
             left.Release();
             right.Stop();
@@ -816,57 +813,25 @@ namespace CustomVision //name of our app
 
                 if (curOutput == labels[2]) //going right
                 {
-                    if (1 == Interlocked.CompareExchange(ref canSpeak, 0, 1))
-                    {
-                        // if canSpeak = 1 -> set canSpeak = 0 immediately and return 1
-                        // Speak(labels[1], prefix); 
-                        SaveLog("speak " + "left", DateTime.Now, prefix);
-                        //speaking left
-                        left.Start();
-                        left.Completion += delegate
-                        {
-                            Interlocked.Exchange(ref canSpeak, 1);
-                        };
-                    }
+                    // Speak(labels[1], prefix); 
+                    SaveLog("speak " + "left", DateTime.Now, prefix);
+                    //speaking left
+                    left.Start();
                 }
                 else if (curOutput == labels[1]) //going left
                 {
-                    if (1 == Interlocked.CompareExchange(ref canSpeak, 0, 1))
-                    {
-                        // Speak(labels[2], prefix); 
-                        SaveLog("speak " + "right", DateTime.Now, prefix);
-                        //speaking right
-                        right.Start();
-                        right.Completion += delegate
-                        {
-                            Interlocked.Exchange(ref canSpeak, 1);
-                        };
-                    }
+                    // Speak(labels[2], prefix); 
+                    SaveLog("speak " + "right", DateTime.Now, prefix);
+                    //speaking right
+                    right.Start();
                 }
                 else if (curOutput == labels[0])// going inlane
                 {
                     if (previousOutput != curOutput && previousOutput != null) //checking if previous label = left or right
                     {
-                        // we are going to ding no matter what. even if it means interrupting speech
-                        Interlocked.Exchange(ref canSpeak, 0);
-                        if (right.IsPlaying)
-                        {
-                            right.Stop();
-                            right.Prepare();
-                        }
-                        if (left.IsPlaying)
-                        {
-                            left.Stop();
-                            left.Prepare();
-                        }
-
                         // play ding
                         SaveLog("in lane ding play", DateTime.Now, prefix);
-                        ding.Start();
-                        ding.Completion += delegate
-                        {
-                            Interlocked.Exchange(ref canSpeak, 1);
-                        };
+                        mPlayer.Start();
                     }
                 }
                 else
