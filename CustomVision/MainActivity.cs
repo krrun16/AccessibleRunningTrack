@@ -141,7 +141,7 @@ namespace CustomVision //name of our app
         };
         private static List<string> storeWindow = new List<string>();
         private static TextToSpeech tts;
-        private static readonly int WINDOW_SIZE = 10;
+        private static readonly int WINDOW_SIZE = 20;
         private static MediaPlayer mPlayer;
         private static MediaPlayer left;
         private static MediaPlayer right;
@@ -482,7 +482,7 @@ namespace CustomVision //name of our app
                         count++;
                     }
                 }
-                if (count >= 6)
+                if (count > WINDOW_SIZE/2)
                 {
                     return labels[i];
                 }
@@ -816,14 +816,22 @@ namespace CustomVision //name of our app
                     // Speak(labels[1], prefix); 
                     SaveLog("speak " + "left", DateTime.Now, prefix);
                     //speaking left
-                    left.Start();
+                    if(!right.IsPlaying && !mPlayer.IsPlaying)
+                    {
+                        left.Start();
+                    }
+                    
                 }
                 else if (curOutput == labels[1]) //going left
                 {
                     // Speak(labels[2], prefix); 
                     SaveLog("speak " + "right", DateTime.Now, prefix);
                     //speaking right
-                    right.Start();
+                    if (!left.IsPlaying && !mPlayer.IsPlaying)
+                    {
+                        right.Start();
+
+                    }
                 }
                 else if (curOutput == labels[0])// going inlane
                 {
@@ -831,7 +839,17 @@ namespace CustomVision //name of our app
                     {
                         // play ding
                         SaveLog("in lane ding play", DateTime.Now, prefix);
-                        mPlayer.Start();
+                        if(left.IsPlaying)
+                        {
+                            left.Stop();
+                            left.Prepare();
+                        }
+                        else if(right.IsPlaying)
+                        {
+                            right.Stop();
+                            right.Prepare();
+                        }
+                        mPlayer.Start();  
                     }
                 }
                 else
