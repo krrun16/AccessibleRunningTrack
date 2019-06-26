@@ -143,6 +143,8 @@ namespace CustomVision //name of our app
         private static TextToSpeech tts;
         private static readonly int WINDOW_SIZE = 5;
         private static MediaPlayer mPlayer;
+        private static MediaPlayer left;
+        private static MediaPlayer right;
 
         private static System.Timers.Timer timer;
         public static bool isReady = false;
@@ -204,6 +206,8 @@ namespace CustomVision //name of our app
                 tts = new TextToSpeech(this, this);
             }
             mPlayer = MediaPlayer.Create(this, Resource.Raw.sound);
+            left = MediaPlayer.Create(this, Resource.Raw.left);
+            right = MediaPlayer.Create(this, Resource.Raw.right);
             if (wait)
             {
                 timer = new System.Timers.Timer
@@ -794,11 +798,17 @@ namespace CustomVision //name of our app
 
                 if (curOutput == labels[2]) //going right
                 {
-                    Speak(labels[1], prefix); //speaking left
+                    // Speak(labels[1], prefix); 
+                    SaveLog("speak " + "left", DateTime.Now, prefix);
+                    //speaking left
+                    left.Start();
                 }
                 else if (curOutput == labels[1]) //going left
                 {
-                    Speak(labels[2], prefix); //speaking right
+                    // Speak(labels[2], prefix); 
+                    SaveLog("speak " + "right", DateTime.Now, prefix);
+                    //speaking right
+                    right.Start();
                 }
                 else if (curOutput == labels[0])// going inlane
                 {
