@@ -141,10 +141,11 @@ namespace CustomVision //name of our app
         };
         private static List<string> storeWindow = new List<string>();
         private static TextToSpeech tts;
-        private static readonly int WINDOW_SIZE = 5;
+        private static readonly int WINDOW_SIZE = 10;
         private static MediaPlayer mPlayer;
         private static MediaPlayer left;
         private static MediaPlayer right;
+        private static MediaPlayer go;
 
         private static System.Timers.Timer timer;
         public static bool isReady = false;
@@ -208,6 +209,7 @@ namespace CustomVision //name of our app
             mPlayer = MediaPlayer.Create(this, Resource.Raw.sound);
             left = MediaPlayer.Create(this, Resource.Raw.left);
             right = MediaPlayer.Create(this, Resource.Raw.right);
+            go = MediaPlayer.Create(this, Resource.Raw.go);
             if (wait)
             {
                 timer = new System.Timers.Timer
@@ -219,8 +221,14 @@ namespace CustomVision //name of our app
                 {
                     timer.Stop();
                     Log.Debug("Uiowa","Timer finished!");
-                    isReady = true; //after 30 secs, ready to process the image
-                    Speak("GO", 0); //Say "Go" before start processing
+                    //isReady = true; //after 30 secs, ready to process the image
+                    //Speak("GO", 0); 
+                    SaveLog("speak " + "GO", DateTime.Now, 0);
+                    go.Start(); //Say "Go" before start processing
+                    go.Completion += delegate
+                    {
+                        isReady = true; //after 30 secs, ready to process the image
+                    };
                     timer.Dispose();
                 };
                 timer.Start();
@@ -231,14 +239,14 @@ namespace CustomVision //name of our app
             
         }
 
-        public static void Speak(string CurrentText, int prefix)
+        /*public static void Speak(string CurrentText, int prefix)
         {
             if (!tts.IsSpeaking) 
             {
                 SaveLog("speak " + CurrentText, DateTime.Now, prefix);
                 tts.Speak(CurrentText, QueueMode.Flush, null, null);
             }
-        }
+        }*/
 
         protected override void OnResume()
         {
@@ -307,8 +315,15 @@ namespace CustomVision //name of our app
             CloseCamera();
             CloseBackgroundThread();
             FinishAffinity();
+            go.Stop();
+            go.Release();
             mPlayer.Stop();
             mPlayer.Release();
+            left.Stop();
+            left.Release();
+            right.Stop();
+            right.Release();
+
             System.Environment.Exit(0);
         }
 
@@ -467,7 +482,7 @@ namespace CustomVision //name of our app
                         count++;
                     }
                 }
-                if (count >= 3)
+                if (count >= 6)
                 {
                     return labels[i];
                 }
