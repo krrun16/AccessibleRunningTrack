@@ -218,6 +218,7 @@ namespace CustomVision //name of our app
             go = MediaPlayer.Create(this, Resource.Raw.go);
             if (wait)
             {
+                SaveLog("trial selected", DateTime.Now, 0);
                 timer = new System.Timers.Timer
                 {
                     Interval = 30000,
@@ -240,6 +241,7 @@ namespace CustomVision //name of our app
                 timer.Start();
             } else
             {
+                SaveLog("tutorial selected", DateTime.Now, 0);
                 isReady = true; // for tutorial button wait = false, directly start processing
             }
             
