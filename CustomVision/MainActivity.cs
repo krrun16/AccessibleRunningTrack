@@ -1003,9 +1003,17 @@ namespace CustomVision //name of our app
                         //resize the bitmap
                         Bitmap scaledBitmap = Bitmap.CreateScaledBitmap(bitmap, inputsize, inputsize, false);
                         Bitmap resizedBitmap = scaledBitmap.Copy(Bitmap.Config.Argb8888, false);
+                        Bitmap preOpenCvBitmap = scaledBitmap.Copy(Bitmap.Config.Argb8888, false);
                         int w = resizedBitmap.Width;
                         int h = resizedBitmap.Height;
-                        BitmapPrefix bitmapPrefix = new BitmapPrefix(resizedBitmap, prefix); // **TODO
+                        BitmapPrefix bitmapPrefix = new BitmapPrefix(resizedBitmap, prefix);
+
+                        // adding the track photo after making it smaller and square, so that we have it for further analysis
+                        if (!MainActivity.bc.IsAddingCompleted)
+                        {
+                            BitmapPrefix preOpenCVBitmapPrefix = new BitmapPrefix(preOpenCvBitmap, prefix);
+                            MainActivity.bc.Add(preOpenCVBitmapPrefix);
+                        }
 
                         if (MainActivity.tiltPhotos)
                         {
