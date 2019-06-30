@@ -171,6 +171,12 @@ namespace CustomVision //name of our app
             percent35 = Intent.GetBooleanExtra("35Percent", false);
             backCamera = Intent.GetBooleanExtra("backCamera", false);
 
+            // set parameters to 25%, no tilt, front camera no matter what
+            tiltPhotos = false;
+            percent25 = true;
+            percent35 = false;
+            backCamera = false;
+
             if (backCamera)
             {
                 cameraFacing = (int)LensFacing.Back;
