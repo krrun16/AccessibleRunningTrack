@@ -24,6 +24,7 @@ using Org.Opencv.Core;
 using Org.Opencv.Imgproc;
 using Size = Org.Opencv.Core.Size;
 using Android.Hardware;
+using Xamarin.Essentials;
 
 namespace CustomVision //name of our app
 {
@@ -110,7 +111,7 @@ namespace CustomVision //name of our app
 
     [Activity(Label = "@string/app_name", MainLauncher = false, Icon = "@mipmap/icon", Theme = "@style/MyTheme", ScreenOrientation = ScreenOrientation.Portrait)]
     public class MainActivity : AppCompatActivity, TextureView.ISurfaceTextureListener, 
-        TextToSpeech.IOnInitListener, ILoaderCallbackInterface, ISensorEventListener
+        Android.Speech.Tts.TextToSpeech.IOnInitListener, ILoaderCallbackInterface, ISensorEventListener
     {
         private static Context context;
         public static int cameraFacing;
@@ -140,7 +141,7 @@ namespace CustomVision //name of our app
             Manifest.Permission.Camera
         };
         private static List<string> storeWindow = new List<string>();
-        private static TextToSpeech tts;
+        private static Android.Speech.Tts.TextToSpeech tts;
         private static readonly int WINDOW_SIZE = 20;
         private static MediaPlayer mPlayer;
         private static MediaPlayer left;
@@ -161,9 +162,16 @@ namespace CustomVision //name of our app
         private float[] mGravity = new float[3];
         public static double rotatedAngle;
 
+        public override void OnRequestPermissionsResult(int requestCode, string[] permissions, [GeneratedEnum] Android.Content.PM.Permission[] grantResults)
+        {
+            Platform.OnRequestPermissionsResult(requestCode, permissions, grantResults);
+            base.OnRequestPermissionsResult(requestCode, permissions, grantResults);
+        }
+
         protected override void OnCreate(Bundle savedInstanceState)
         {
             base.OnCreate(savedInstanceState);
+            Platform.Init(this, savedInstanceState); // add this line to your code, it may also be called: bundle
             context = ApplicationContext;
             wait = Intent.GetBooleanExtra("wait", false);
             tiltPhotos = Intent.GetBooleanExtra("tiltPhotos", false);
@@ -210,7 +218,7 @@ namespace CustomVision //name of our app
                 {
                     Directory.CreateDirectory(sdcardPath);
                 }
-                tts = new TextToSpeech(this, this);
+                tts = new Android.Speech.Tts.TextToSpeech(this, this);
             }
             mPlayer = MediaPlayer.Create(this, Resource.Raw.sound);
             left = MediaPlayer.Create(this, Resource.Raw.left);
@@ -219,6 +227,8 @@ namespace CustomVision //name of our app
             if (wait)
             {
                 SaveLog("trial selected", DateTime.Now, 0);
+                var level = Battery.ChargeLevel;
+                SaveLog("battery level = " + level, DateTime.Now, 0);
                 timer = new System.Timers.Timer
                 {
                     Interval = 30000,
@@ -242,6 +252,8 @@ namespace CustomVision //name of our app
             } else
             {
                 SaveLog("tutorial selected", DateTime.Now, 0);
+                var level = Battery.ChargeLevel;
+                SaveLog("battery level = " + level, DateTime.Now, 0);
                 isReady = true; // for tutorial button wait = false, directly start processing
             }
             
@@ -362,6 +374,8 @@ namespace CustomVision //name of our app
 
         private void CloseCamera()
         {
+            var level = Battery.ChargeLevel;
+            SaveLog("battery level = " + level, DateTime.Now, 0);
             bc.CompleteAdding();
             task.Wait();
             task2.Wait();
