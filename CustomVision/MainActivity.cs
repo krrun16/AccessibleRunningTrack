@@ -154,7 +154,6 @@ namespace CustomVision //name of our app
         private static MediaPlayer slightLeft;
         private static MediaPlayer littleRight;
         private static MediaPlayer littleLeft;
-        private static MediaPlayer tooFar;
 
         private static System.Timers.Timer timer;
         public static bool isReady = false;
@@ -229,14 +228,13 @@ namespace CustomVision //name of our app
                 tts = new Android.Speech.Tts.TextToSpeech(this, this);
             }
             inLane = MediaPlayer.Create(this, Resource.Raw.sound);
-            left = MediaPlayer.Create(this, Resource.Raw.left);
-            right = MediaPlayer.Create(this, Resource.Raw.right);
+            left = MediaPlayer.Create(this, Resource.Raw.left90);
+            right = MediaPlayer.Create(this, Resource.Raw.right90);
             go = MediaPlayer.Create(this, Resource.Raw.go);
-            slightRight = MediaPlayer.Create(this, Resource.Raw.slight_right);
-            slightLeft = MediaPlayer.Create(this, Resource.Raw.slight_left);
-            littleRight = MediaPlayer.Create(this, Resource.Raw.little_right);
-            littleLeft = MediaPlayer.Create(this, Resource.Raw.little_left);
-            tooFar = MediaPlayer.Create(this, Resource.Raw.too_far);
+            slightRight = MediaPlayer.Create(this, Resource.Raw.right45);
+            slightLeft = MediaPlayer.Create(this, Resource.Raw.left45);
+            littleRight = MediaPlayer.Create(this, Resource.Raw.righttiny);
+            littleLeft = MediaPlayer.Create(this, Resource.Raw.lefttiny);
 
             if (wait)
             {
@@ -365,8 +363,6 @@ namespace CustomVision //name of our app
             littleRight.Release();
             littleLeft.Stop();
             littleLeft.Release();
-            tooFar.Stop();
-            tooFar.Release();
 
             System.Environment.Exit(0);
         }
@@ -1070,11 +1066,6 @@ namespace CustomVision //name of our app
             {
                 littleLeft.Stop();
                 littleLeft.Prepare();
-            }
-            else if (player != tooFar && tooFar.IsPlaying)
-            {
-                tooFar.Stop();
-                tooFar.Prepare();
             }
         }
 
