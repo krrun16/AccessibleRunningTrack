@@ -147,6 +147,10 @@ namespace CustomVision //name of our app
         private static MediaPlayer left;
         private static MediaPlayer right;
         private static MediaPlayer go;
+        private static MediaPlayer slightRight;
+        private static MediaPlayer slightLeft;
+        private static MediaPlayer littleRight;
+        private static MediaPlayer littleLeft;
 
         private static System.Timers.Timer timer;
         public static bool isReady = false;
@@ -224,6 +228,11 @@ namespace CustomVision //name of our app
             left = MediaPlayer.Create(this, Resource.Raw.left);
             right = MediaPlayer.Create(this, Resource.Raw.right);
             go = MediaPlayer.Create(this, Resource.Raw.go);
+            slightRight = MediaPlayer.Create(this, Resource.Raw.slight_right);
+            slightLeft = MediaPlayer.Create(this, Resource.Raw.slight_left);
+            littleRight = MediaPlayer.Create(this, Resource.Raw.little_right);
+            littleRight = MediaPlayer.Create(this, Resource.Raw.little_left);
+
             if (wait)
             {
                 SaveLog("trial selected", DateTime.Now, 0);
@@ -343,6 +352,14 @@ namespace CustomVision //name of our app
             left.Release();
             right.Stop();
             right.Release();
+            slightRight.Stop();
+            slightRight.Release();
+            slightLeft.Stop();
+            slightLeft.Release();
+            littleRight.Stop();
+            littleRight.Release();
+            littleLeft.Stop();
+            littleLeft.Release();
 
             System.Environment.Exit(0);
         }
@@ -709,7 +726,8 @@ namespace CustomVision //name of our app
         {
             // setting up image labels
             List<string> labels = new List<string>();
-            string[] input = { "inlane", "left", "right" };
+            string[] input = { "inlane", "left", "right", "slight right", "slight left", "little right",
+                "little left" };
             labels.AddRange(input);
             string currentLabel = "";
 
@@ -789,14 +807,39 @@ namespace CustomVision //name of our app
 
                     double inlane_min = 84;
                     double inlane_max = 140;
+                    double little_right_min = 0;
+                    double slight_right_min = -576;
+                    double little_left_max = 224;
+                    double slight_left_max = 800;
 
                     if (intersect_dist < inlane_min) // veering right
                     {
-                        currentLabel = labels[2];
+                        if (intersect_dist > little_right_min)
+                        {
+                            currentLabel = labels[5]; // little right
+                        } else if (intersect_dist > slight_right_min)
+                        {
+                            currentLabel = labels[3]; // slight right
+                        } else
+                        {
+                            currentLabel = labels[2];
+                        }
+                        
                     }
                     else if (intersect_dist > inlane_max) // veering left
                     {
-                        currentLabel = labels[1];
+                        if (intersect_dist < little_left_max)
+                        {
+                            currentLabel = labels[6]; // little left
+                        }
+                        else if (intersect_dist < slight_left_max)
+                        {
+                            currentLabel = labels[4]; // slight left
+                        }
+                        else
+                        {
+                            currentLabel = labels[1];
+                        }
                     }
                     else if (intersect_dist >= inlane_min && intersect_dist <= inlane_max) // in lane
                     {
@@ -835,10 +878,10 @@ namespace CustomVision //name of our app
 
                 if (curOutput == labels[2]) //going right
                 {
-                    // Speak(labels[1], prefix); 
                     SaveLog("speak " + "left", DateTime.Now, prefix);
                     //speaking left
-                    if(!right.IsPlaying && !mPlayer.IsPlaying)
+                    if(!slightLeft.IsPlaying&& !slightRight.IsPlaying && !littleRight.IsPlaying && 
+                        !littleLeft.IsPlaying && !right.IsPlaying && !mPlayer.IsPlaying)
                     {
                         left.Start();
                     }
@@ -849,12 +892,59 @@ namespace CustomVision //name of our app
                     // Speak(labels[2], prefix); 
                     SaveLog("speak " + "right", DateTime.Now, prefix);
                     //speaking right
-                    if (!left.IsPlaying && !mPlayer.IsPlaying)
+                    if (!slightLeft.IsPlaying && !slightRight.IsPlaying && !littleRight.IsPlaying &&
+                        !littleLeft.IsPlaying && !left.IsPlaying && !mPlayer.IsPlaying)
                     {
                         right.Start();
 
                     }
                 }
+
+                else if (curOutput == labels[4]) //going slight left
+                {
+                    SaveLog("speak " + "slight right", DateTime.Now, prefix);
+                    //speaking slight right
+                    if (!slightLeft.IsPlaying && !littleRight.IsPlaying && !littleLeft.IsPlaying && 
+                        !right.IsPlaying && !left.IsPlaying && !mPlayer.IsPlaying)
+                    {
+                        slightRight.Start();
+
+                    }
+                }
+                else if (curOutput == labels[3]) //going slight right
+                {
+                    SaveLog("speak " + "slight left", DateTime.Now, prefix);
+                    //speaking slight left
+                    if (!slightRight.IsPlaying && !littleRight.IsPlaying && !littleLeft.IsPlaying && 
+                        !right.IsPlaying && !left.IsPlaying && !mPlayer.IsPlaying)
+                    {
+                        slightLeft.Start();
+
+                    }
+                }
+                else if (curOutput == labels[6]) //going little left
+                {
+                    SaveLog("speak " + "little right", DateTime.Now, prefix);
+                    //speaking little right
+                    if (!slightLeft.IsPlaying && !slightRight.IsPlaying && !littleLeft.IsPlaying && 
+                        !right.IsPlaying && !left.IsPlaying && !mPlayer.IsPlaying)
+                    {
+                        littleRight.Start();
+
+                    }
+                }
+                else if (curOutput == labels[5]) //going little right
+                {
+                    SaveLog("speak " + "little left", DateTime.Now, prefix);
+                    //speaking little left
+                    if (!slightLeft.IsPlaying && !slightRight.IsPlaying && !littleRight.IsPlaying &&
+                        !right.IsPlaying && !left.IsPlaying && !mPlayer.IsPlaying)
+                    {
+                        littleLeft.Start();
+                    }
+                }
+
+
                 else if (curOutput == labels[0])// going inlane
                 {
                     if (previousOutput != curOutput && previousOutput != null) //checking if previous label = left or right
@@ -870,6 +960,26 @@ namespace CustomVision //name of our app
                         {
                             right.Stop();
                             right.Prepare();
+                        }
+                        else if (slightRight.IsPlaying)
+                        {
+                            slightRight.Stop();
+                            slightRight.Prepare();
+                        }
+                        else if (slightLeft.IsPlaying)
+                        {
+                            slightLeft.Stop();
+                            slightLeft.Prepare();
+                        }
+                        else if (littleRight.IsPlaying)
+                        {
+                            littleRight.Stop();
+                            littleRight.Prepare();
+                        }
+                        else if (littleLeft.IsPlaying)
+                        {
+                            littleLeft.Stop();
+                            littleLeft.Prepare();
                         }
                         mPlayer.Start();  
                     }
