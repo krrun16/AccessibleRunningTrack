@@ -13,7 +13,6 @@
 		android:id="@+id/twenty_five_percent"
 		android:layout_width="match_parent"
 		android:layout_height="wrap_content"
-		android:visibility="invisible"
 		android:text="@string/twenty_five" />
 	<CheckBox
 		android:id="@+id/thirty_five_percent"
@@ -25,7 +24,6 @@
 		android:id="@+id/back_camera_use"
 		android:layout_width="match_parent"
 		android:layout_height="wrap_content"
-		android:visibility="invisible"
 		android:text="@string/back_camera" />
 	<Button
 		android:id="@+id/start_btn"

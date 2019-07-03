@@ -185,9 +185,9 @@ namespace CustomVision //name of our app
 
             // set parameters to 25%, no tilt, front camera no matter what
             tiltPhotos = false;
-            percent25 = true;
+            //percent25 = true;
             percent35 = false;
-            backCamera = false;
+            //backCamera = false;
 
             if (backCamera)
             {
