@@ -836,10 +836,11 @@ namespace CustomVision //name of our app
                 if (curOutput == labels[2]) //going right
                 {
                     // Speak(labels[1], prefix); 
-                    SaveLog("speak " + "left", DateTime.Now, prefix);
+                   
                     //speaking left
                     if(!right.IsPlaying && !mPlayer.IsPlaying)
                     {
+                        SaveLog("speak " + "left", DateTime.Now, prefix);
                         left.Start();
                     }
                     
@@ -847,10 +848,11 @@ namespace CustomVision //name of our app
                 else if (curOutput == labels[1]) //going left
                 {
                     // Speak(labels[2], prefix); 
-                    SaveLog("speak " + "right", DateTime.Now, prefix);
+                    
                     //speaking right
                     if (!left.IsPlaying && !mPlayer.IsPlaying)
                     {
+                        SaveLog("speak " + "right", DateTime.Now, prefix);
                         right.Start();
 
                     }
