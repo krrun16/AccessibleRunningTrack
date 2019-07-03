@@ -135,6 +135,8 @@ namespace CustomVision //name of our app
         private static readonly object locker = new object();
         public static string PreviousText = "noLabel";
         private static string previousOutput = null;
+        private static string previousLabel = null;
+        private static string priorToParallel = null;
 
         private static readonly string[] permissions = {
             Manifest.Permission.WriteExternalStorage,
@@ -143,7 +145,8 @@ namespace CustomVision //name of our app
         private static List<string> storeWindow = new List<string>();
         private static Android.Speech.Tts.TextToSpeech tts;
         private static readonly int WINDOW_SIZE = 20;
-        private static MediaPlayer mPlayer;
+        private static readonly int IN_LANE_WINDOW_SIZE = 5;
+        private static MediaPlayer inLane;
         private static MediaPlayer left;
         private static MediaPlayer right;
         private static MediaPlayer go;
@@ -151,6 +154,7 @@ namespace CustomVision //name of our app
         private static MediaPlayer slightLeft;
         private static MediaPlayer littleRight;
         private static MediaPlayer littleLeft;
+        private static MediaPlayer tooFar;
 
         private static System.Timers.Timer timer;
         public static bool isReady = false;
@@ -185,9 +189,9 @@ namespace CustomVision //name of our app
 
             // set parameters to 25%, no tilt, front camera no matter what
             tiltPhotos = false;
-            //percent25 = true;
+            percent25 = true;
             percent35 = false;
-            //backCamera = false;
+            backCamera = false;
 
             if (backCamera)
             {
@@ -224,14 +228,15 @@ namespace CustomVision //name of our app
                 }
                 tts = new Android.Speech.Tts.TextToSpeech(this, this);
             }
-            mPlayer = MediaPlayer.Create(this, Resource.Raw.sound);
+            inLane = MediaPlayer.Create(this, Resource.Raw.sound);
             left = MediaPlayer.Create(this, Resource.Raw.left);
             right = MediaPlayer.Create(this, Resource.Raw.right);
             go = MediaPlayer.Create(this, Resource.Raw.go);
             slightRight = MediaPlayer.Create(this, Resource.Raw.slight_right);
             slightLeft = MediaPlayer.Create(this, Resource.Raw.slight_left);
             littleRight = MediaPlayer.Create(this, Resource.Raw.little_right);
-            littleRight = MediaPlayer.Create(this, Resource.Raw.little_left);
+            littleLeft = MediaPlayer.Create(this, Resource.Raw.little_left);
+            tooFar = MediaPlayer.Create(this, Resource.Raw.too_far);
 
             if (wait)
             {
@@ -346,8 +351,8 @@ namespace CustomVision //name of our app
             FinishAffinity();
             go.Stop();
             go.Release();
-            mPlayer.Stop();
-            mPlayer.Release();
+            inLane.Stop();
+            inLane.Release();
             left.Stop();
             left.Release();
             right.Stop();
@@ -360,6 +365,8 @@ namespace CustomVision //name of our app
             littleRight.Release();
             littleLeft.Stop();
             littleLeft.Release();
+            tooFar.Stop();
+            tooFar.Release();
 
             System.Environment.Exit(0);
         }
@@ -521,6 +528,11 @@ namespace CustomVision //name of our app
                         count++;
                     }
                 }
+                if (labels[i] == "inlane" && count > IN_LANE_WINDOW_SIZE/2)
+                {
+                    return labels[i];
+                }
+
                 if (count > WINDOW_SIZE/2)
                 {
                     return labels[i];
@@ -722,12 +734,47 @@ namespace CustomVision //name of our app
             return dst;
         }
 
+        public static string CheckPriorDirection()
+        {
+            int rightCount = 0;
+            int leftCount = 0;
+            for (int j = storeWindow.Count - 1; j >= 0; j--)
+            {
+                if (storeWindow[j] == "little right" || storeWindow[j] == "slight right")
+                {
+                    rightCount++;
+                }
+                if (storeWindow[j] == "little left" || storeWindow[j] == "slight left")
+                {
+                    leftCount++;
+                }
+                if (storeWindow[j] == "inlane")
+                {
+                    if (rightCount > leftCount)
+                    {
+                        return "right";
+                    } else
+                    {
+                        return "left";
+                    }
+                }
+            }
+            if (rightCount > leftCount)
+            {
+                return "right";
+            }
+            else
+            {
+                return "left";
+            }
+        }
+
         public static void ImplementImageProcessing(Bitmap resizedBitmap,int prefix)
         {
             // setting up image labels
             List<string> labels = new List<string>();
             string[] input = { "inlane", "left", "right", "slight right", "slight left", "little right",
-                "little left" };
+                "little left", "parallel" };
             labels.AddRange(input);
             string currentLabel = "";
 
@@ -763,6 +810,9 @@ namespace CustomVision //name of our app
                 Lines[] lineInfos = new Lines[lines.Rows()];
                 int idx = 0;
 
+                double minSlope = 99999;
+                double maxSlope = -99999;
+
                 for (int x = 0; x < lines.Rows(); x++)
                 {
                     double[] vec = lines.Get(x, 0);
@@ -789,12 +839,33 @@ namespace CustomVision //name of our app
                     {
                         Imgproc.Line(imgMat, start, end, new Scalar(0, 255, 0, 255), 1);
                         lineInfos[idx] = DeriveLineInfo(x1, x2, y1, y2);
+                        if (lineInfos[idx].m < minSlope)
+                        {
+                            minSlope = lineInfos[idx].m;
+                        }
+                        if (lineInfos[idx].m > maxSlope)
+                        {
+                            maxSlope = lineInfos[idx].m;
+                        }
                         idx++;
                     }
                 }
 
                 if (lineInfos.Length >= 2) // since we have two unknowns, x and y, we need at least 2 lines
                 {
+                    Boolean isParallel = false;
+                    double slopeDifference = maxSlope - minSlope;
+                    if (maxSlope - minSlope < .1)
+                    {
+                        // lines are parallel
+                        SaveLog("lines are parallel", DateTime.Now, prefix);
+                        if (previousLabel != "parallel")
+                        {
+                            priorToParallel = CheckPriorDirection();
+                        }
+                        isParallel = true;
+                    }
+
                     Mat answer = Solve2D(lineInfos);
                     Org.Opencv.Core.Point point = new Org.Opencv.Core.Point
                     {
@@ -812,45 +883,54 @@ namespace CustomVision //name of our app
                     double little_left_max = 224;
                     double slight_left_max = 800;
 
-                    if (intersect_dist < inlane_min) // veering right
+                    if (!isParallel)
                     {
-                        if (intersect_dist > little_right_min)
+                        if (intersect_dist < inlane_min) // veering right
                         {
-                            currentLabel = labels[5]; // little right
-                        } else if (intersect_dist > slight_right_min)
-                        {
-                            currentLabel = labels[3]; // slight right
-                        } else
-                        {
-                            currentLabel = labels[2];
-                        }
-                        
-                    }
-                    else if (intersect_dist > inlane_max) // veering left
-                    {
-                        if (intersect_dist < little_left_max)
-                        {
-                            currentLabel = labels[6]; // little left
-                        }
-                        else if (intersect_dist < slight_left_max)
-                        {
-                            currentLabel = labels[4]; // slight left
-                        }
-                        else
-                        {
-                            currentLabel = labels[1];
-                        }
-                    }
-                    else if (intersect_dist >= inlane_min && intersect_dist <= inlane_max) // in lane
-                    {
-                        currentLabel = labels[0];
-                    }
+                            if (intersect_dist > little_right_min)
+                            {
+                                currentLabel = labels[5]; // little right
+                            }
+                            else if (intersect_dist > slight_right_min)
+                            {
+                                currentLabel = labels[3]; // slight right
+                            }
+                            else
+                            {
+                                currentLabel = labels[2];
+                            }
 
+                        }
+                        else if (intersect_dist > inlane_max) // veering left
+                        {
+                            if (intersect_dist < little_left_max)
+                            {
+                                currentLabel = labels[6]; // little left
+                            }
+                            else if (intersect_dist < slight_left_max)
+                            {
+                                currentLabel = labels[4]; // slight left
+                            }
+                            else
+                            {
+                                currentLabel = labels[1];
+                            }
+                        }
+                        else if (intersect_dist >= inlane_min && intersect_dist <= inlane_max) // in lane
+                        {
+                            currentLabel = labels[0];
+                        }
+                    } else
+                    {
+                        currentLabel = labels[7];
+                    }
                 }
                 else
                 {
                     currentLabel = "not_enough_lines";
                 }
+
+                previousLabel = currentLabel;
 
                 //convert Mat to Bitmap again
                 Utils.MatToBitmap(imgMat, resizedBitmap);
@@ -878,72 +958,64 @@ namespace CustomVision //name of our app
 
                 if (curOutput == labels[2]) //going right
                 {
-                    SaveLog("speak " + "left", DateTime.Now, prefix);
                     //speaking left
-                    if(!slightLeft.IsPlaying&& !slightRight.IsPlaying && !littleRight.IsPlaying && 
-                        !littleLeft.IsPlaying && !right.IsPlaying && !mPlayer.IsPlaying)
-                    {
-                        left.Start();
-                    }
-                    
+                    InterruptVoice(left);
+                    SaveLog("speak " + "left", DateTime.Now, prefix);
+                    left.Start(); 
                 }
                 else if (curOutput == labels[1]) //going left
                 {
-                    // Speak(labels[2], prefix); 
-                    SaveLog("speak " + "right", DateTime.Now, prefix);
                     //speaking right
-                    if (!slightLeft.IsPlaying && !slightRight.IsPlaying && !littleRight.IsPlaying &&
-                        !littleLeft.IsPlaying && !left.IsPlaying && !mPlayer.IsPlaying)
-                    {
-                        right.Start();
-
-                    }
+                    InterruptVoice(right);
+                    SaveLog("speak " + "right", DateTime.Now, prefix);
+                    right.Start();
                 }
 
                 else if (curOutput == labels[4]) //going slight left
                 {
-                    SaveLog("speak " + "slight right", DateTime.Now, prefix);
                     //speaking slight right
-                    if (!slightLeft.IsPlaying && !littleRight.IsPlaying && !littleLeft.IsPlaying && 
-                        !right.IsPlaying && !left.IsPlaying && !mPlayer.IsPlaying)
-                    {
-                        slightRight.Start();
-
-                    }
+                    InterruptVoice(slightRight);
+                    SaveLog("speak " + "slight right", DateTime.Now, prefix);
+                    slightRight.Start();
                 }
                 else if (curOutput == labels[3]) //going slight right
                 {
-                    SaveLog("speak " + "slight left", DateTime.Now, prefix);
                     //speaking slight left
-                    if (!slightRight.IsPlaying && !littleRight.IsPlaying && !littleLeft.IsPlaying && 
-                        !right.IsPlaying && !left.IsPlaying && !mPlayer.IsPlaying)
-                    {
-                        slightLeft.Start();
-
-                    }
+                    InterruptVoice(slightLeft);
+                    SaveLog("speak " + "slight left", DateTime.Now, prefix);
+                    slightLeft.Start();
                 }
                 else if (curOutput == labels[6]) //going little left
-                {
-                    SaveLog("speak " + "little right", DateTime.Now, prefix);
+                {     
                     //speaking little right
-                    if (!slightLeft.IsPlaying && !slightRight.IsPlaying && !littleLeft.IsPlaying && 
-                        !right.IsPlaying && !left.IsPlaying && !mPlayer.IsPlaying)
-                    {
-                        littleRight.Start();
-
-                    }
+                    InterruptVoice(littleRight);
+                    SaveLog("speak " + "little right", DateTime.Now, prefix);
+                    littleRight.Start();
                 }
                 else if (curOutput == labels[5]) //going little right
                 {
-                    SaveLog("speak " + "little left", DateTime.Now, prefix);
                     //speaking little left
-                    if (!slightLeft.IsPlaying && !slightRight.IsPlaying && !littleRight.IsPlaying &&
-                        !right.IsPlaying && !left.IsPlaying && !mPlayer.IsPlaying)
-                    {
-                        littleLeft.Start();
-                    }
+                    InterruptVoice(littleLeft);
+                    SaveLog("speak " + "little left", DateTime.Now, prefix);
+                    littleLeft.Start();
                 }
 
+                else if (curOutput == labels[7]) // parallel - gone too far
+                {
+                    if (priorToParallel == "right") // gone too far right
+                    {
+                        // speaking left
+                        InterruptVoice(left);
+                        SaveLog("speak left", DateTime.Now, prefix);
+                        left.Start();
+                    } else if (priorToParallel == "left") // gone too far left
+                    {
+                        // speaking right
+                        InterruptVoice(right);
+                        SaveLog("speak right", DateTime.Now, prefix);
+                        right.Start();
+                    }
+                }
 
                 else if (curOutput == labels[0])// going inlane
                 {
@@ -951,37 +1023,8 @@ namespace CustomVision //name of our app
                     {
                         // play ding
                         SaveLog("in lane ding play", DateTime.Now, prefix);
-                        if(left.IsPlaying)
-                        {
-                            left.Stop();
-                            left.Prepare();
-                        }
-                        else if(right.IsPlaying)
-                        {
-                            right.Stop();
-                            right.Prepare();
-                        }
-                        else if (slightRight.IsPlaying)
-                        {
-                            slightRight.Stop();
-                            slightRight.Prepare();
-                        }
-                        else if (slightLeft.IsPlaying)
-                        {
-                            slightLeft.Stop();
-                            slightLeft.Prepare();
-                        }
-                        else if (littleRight.IsPlaying)
-                        {
-                            littleRight.Stop();
-                            littleRight.Prepare();
-                        }
-                        else if (littleLeft.IsPlaying)
-                        {
-                            littleLeft.Stop();
-                            littleLeft.Prepare();
-                        }
-                        mPlayer.Start();  
+                        InterruptVoice(inLane);
+                        inLane.Start();  
                     }
                 }
                 else
@@ -993,6 +1036,45 @@ namespace CustomVision //name of our app
             } else
             {
                 SaveLog("no lines detected", DateTime.Now, prefix);
+            }
+        }
+
+        private static void InterruptVoice(MediaPlayer player)
+        {
+            if (player != left && left.IsPlaying)
+            {
+                left.Stop();
+                left.Prepare();
+            }
+            else if (player != right && right.IsPlaying)
+            {
+                right.Stop();
+                right.Prepare();
+            }
+            else if (player != slightRight && slightRight.IsPlaying)
+            {
+                slightRight.Stop();
+                slightRight.Prepare();
+            }
+            else if (player != slightLeft && slightLeft.IsPlaying)
+            {
+                slightLeft.Stop();
+                slightLeft.Prepare();
+            }
+            else if (player != littleRight && littleRight.IsPlaying)
+            {
+                littleRight.Stop();
+                littleRight.Prepare();
+            }
+            else if (player != littleLeft && littleLeft.IsPlaying)
+            {
+                littleLeft.Stop();
+                littleLeft.Prepare();
+            }
+            else if (player != tooFar && tooFar.IsPlaying)
+            {
+                tooFar.Stop();
+                tooFar.Prepare();
             }
         }
 
