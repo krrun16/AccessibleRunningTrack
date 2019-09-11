@@ -124,7 +124,6 @@ namespace CustomVision //name of our app
         public static CaptureRequest.Builder captureRequestBuilder;
         internal static CameraCaptureSession cameraCaptureSession;
         public string CameraId { get; private set; }
-        private int DSI_height;
         private int DSI_width;
         public static int canProcessImage = 0;
         public static BlockingCollection<BitmapPrefix> bc = new BlockingCollection<BitmapPrefix>();
@@ -135,12 +134,7 @@ namespace CustomVision //name of our app
         private static string previousOutput = null;
         private static string previousLabel = null;
         private static string priorToParallel = null;
-
-        private static readonly string[] permissions = {
-            Manifest.Permission.WriteExternalStorage,
-            Manifest.Permission.Camera
-        };
-        private static List<string> storeWindow = new List<string>();
+        private static readonly List<string> storeWindow = new List<string>();
         private static Android.Speech.Tts.TextToSpeech tts;
         private static readonly int WINDOW_SIZE = 20;
         private static readonly int IN_LANE_WINDOW_SIZE = 5;
@@ -550,19 +544,29 @@ namespace CustomVision //name of our app
             ScriptIntrinsicYuvToRGB yuvToRgbIntrinsic = ScriptIntrinsicYuvToRGB.Create(
                 rs, Element.U8_4(rs));
 
-            Type.Builder yuvType = new Type.Builder(rs, Element.U8(rs)).SetX(data.Length);
-            Allocation inAll = Allocation.CreateTyped(rs, yuvType.Create());
+            using (Type.Builder builder = new Type.Builder(rs, Element.U8(rs)))
+            {
+                using (Type.Builder yuvType = builder.SetX(data.Length))
+                {
+                    Allocation inAll = Allocation.CreateTyped(rs, yuvType.Create());
+                    inAll.CopyFromUnchecked(data);
+                    yuvToRgbIntrinsic.SetInput(inAll);
+                }
+            }
 
-            Type.Builder rgbaType = new Type.Builder(rs, Element.RGBA_8888(rs)).SetX(W).SetY(H);
-            Allocation outAll = Allocation.CreateTyped(rs, rgbaType.Create());
+            Bitmap bmpout = Bitmap.CreateBitmap(W, H, Bitmap.Config.Argb8888);
+            using (Type.Builder builder1 = new Type.Builder(rs, Element.RGBA_8888(rs)))
+            {
+                using (Type.Builder rgbaType = builder1.SetX(W).SetY(H))
+                {
+                    Allocation outAll = Allocation.CreateTyped(rs, rgbaType.Create());
+                    yuvToRgbIntrinsic.ForEach(outAll);
 
-            Bitmap bmpout = Bitmap.CreateBitmap(W, H, Bitmap.Config.Argb8888); 
-            inAll.CopyFromUnchecked(data);
-
-            yuvToRgbIntrinsic.SetInput(inAll);
-            yuvToRgbIntrinsic.ForEach(outAll);
-            outAll.CopyTo(bmpout);
+                    outAll.CopyTo(bmpout);
+                }
+            }
             image.Close();
+            yuvToRgbIntrinsic.Dispose();
             return bmpout;
         }
 
@@ -610,7 +614,6 @@ namespace CustomVision //name of our app
                             cameraCharacteristics.Get(
                                 CameraCharacteristics.ScalerStreamConfigurationMap);
                         DisplayMetrics displayMetrics = Resources.DisplayMetrics;
-                        DSI_height = displayMetrics.HeightPixels;
                         DSI_width = displayMetrics.WidthPixels;
                         previewSize = streamConfigurationMap.GetOutputSizes(
                             (int)ImageFormatType.Yuv420888)[0];
@@ -778,38 +781,41 @@ namespace CustomVision //name of our app
                 for (int x = 0; x < lines.Rows(); x++)
                 {
                     double[] vec = lines.Get(x, 0);
-                    double x1 = vec[0], 
+                    double x1 = vec[0],
                            y1 = vec[1],
                            x2 = vec[2],
                            y2 = vec[3];
-                    Org.Opencv.Core.Point start = new Org.Opencv.Core.Point(x1, y1);
-                    Org.Opencv.Core.Point end = new Org.Opencv.Core.Point(x2, y2);
-
-                    double coefficient = .75; // we want lines that have at least 1 point in the top 3/4 of image 
-
-                    if (x1 != x2 && Math.Min(y1, y2) < coefficient*resizedBitmap.Height)
-                    // we choose to reject perfectly vertical lines because the slope and
-                    // y-intercepts are both infinity. This throws off the linear solver and returns 0,0
-                    // slope is rise over run, so it would be rise/0 = infinity
+                    using (Org.Opencv.Core.Point start = new Org.Opencv.Core.Point(x1, y1))
                     {
-                        Imgproc.Line(imgMat, start, end, new Scalar(0, 255, 0, 255), 1);
-                        lineInfos[idx] = DeriveLineInfo(x1, x2, y1, y2);
-                        if (lineInfos[idx].m < minSlope)
+                        using (Org.Opencv.Core.Point end = new Org.Opencv.Core.Point(x2, y2))
                         {
-                            minSlope = lineInfos[idx].m;
+                            double coefficient = .75; // we want lines that have at least 1 point in the top 3/4 of image 
+
+                            if (x1 != x2 && Math.Min(y1, y2) < coefficient * resizedBitmap.Height)
+                            // we choose to reject perfectly vertical lines because the slope and
+                            // y-intercepts are both infinity. This throws off the linear solver and returns 0,0
+                            // slope is rise over run, so it would be rise/0 = infinity
+                            {
+                                Imgproc.Line(imgMat, start, end, new Scalar(0, 255, 0, 255), 1);
+                                lineInfos[idx] = DeriveLineInfo(x1, x2, y1, y2);
+                                if (lineInfos[idx].m < minSlope)
+                                {
+                                    minSlope = lineInfos[idx].m;
+                                }
+                                if (lineInfos[idx].m > maxSlope)
+                                {
+                                    maxSlope = lineInfos[idx].m;
+                                }
+                                idx++;
+                            }
                         }
-                        if (lineInfos[idx].m > maxSlope)
-                        {
-                            maxSlope = lineInfos[idx].m;
-                        }
-                        idx++;
                     }
                 }
 
                 if (lineInfos.Length >= 2) // since we have two unknowns, x and y, we need at least 2 lines
                 {
                     Boolean isParallel = false;
-                    double slopeDifference = maxSlope - minSlope;
+                    _ = maxSlope - minSlope;
                     if (maxSlope - minSlope < .1)
                     {
                         // lines are parallel
@@ -900,7 +906,7 @@ namespace CustomVision //name of our app
                 StoreResult(currentLabel);
                 SaveLog("current result: " + currentLabel, DateTime.Now, prefix);
                 string bestResultSoFar = GetTopResult(labels);
-                string curOutput = null;
+                string curOutput;
                 if (bestResultSoFar == null)
                 {
                     curOutput = currentLabel;
@@ -1164,26 +1170,28 @@ namespace CustomVision //name of our app
                     {
                         int inputsize = 224;
                         //resize the bitmap
-                        Bitmap scaledBitmap = Bitmap.CreateScaledBitmap(bitmap, inputsize, inputsize, false);
-                        Bitmap resizedBitmap = scaledBitmap.Copy(Bitmap.Config.Argb8888, false);
-                        Bitmap preOpenCvBitmap = scaledBitmap.Copy(Bitmap.Config.Argb8888, false);
-                        int w = resizedBitmap.Width;
-                        int h = resizedBitmap.Height;
-                        BitmapPrefix bitmapPrefix = new BitmapPrefix(resizedBitmap, prefix);
-
-                        // adding the track photo after making it smaller and square, so that we have it for further analysis
-                        if (!MainActivity.bc.IsAddingCompleted)
+                        using (Bitmap scaledBitmap = Bitmap.CreateScaledBitmap(bitmap, inputsize, inputsize, false))
                         {
-                            BitmapPrefix preOpenCVBitmapPrefix = new BitmapPrefix(preOpenCvBitmap, prefix);
-                            MainActivity.bc.Add(preOpenCVBitmapPrefix);
-                        }
+                            Bitmap resizedBitmap = scaledBitmap.Copy(Bitmap.Config.Argb8888, false);
+                            Bitmap preOpenCvBitmap = scaledBitmap.Copy(Bitmap.Config.Argb8888, false);
+                            int w = resizedBitmap.Width;
+                            int h = resizedBitmap.Height;
+                            BitmapPrefix bitmapPrefix = new BitmapPrefix(resizedBitmap, prefix);
 
-                        MainActivity.ImplementImageProcessing(resizedBitmap,prefix, true);
-                        MainActivity.SaveLog("created bitmap", DateTime.Now, prefix); // write when the bitmap is created to the log
-                        
-                        if (!MainActivity.bc.IsAddingCompleted)
-                        {
-                            MainActivity.bc.Add(bitmapPrefix);
+                            // adding the track photo after making it smaller and square, so that we have it for further analysis
+                            if (!MainActivity.bc.IsAddingCompleted)
+                            {
+                                BitmapPrefix preOpenCVBitmapPrefix = new BitmapPrefix(preOpenCvBitmap, prefix);
+                                MainActivity.bc.Add(preOpenCVBitmapPrefix);
+                            }
+
+                            MainActivity.ImplementImageProcessing(resizedBitmap, prefix, true);
+                            MainActivity.SaveLog("created bitmap", DateTime.Now, prefix); // write when the bitmap is created to the log
+
+                            if (!MainActivity.bc.IsAddingCompleted)
+                            {
+                                MainActivity.bc.Add(bitmapPrefix);
+                            }
                         }
                     }
                     image.Close(); // This closes the image so the phone no longer has to hold onto 
