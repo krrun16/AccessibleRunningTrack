@@ -116,8 +116,6 @@ namespace CustomVision //name of our app
         private static Context context;
         public static int cameraFacing;
         public static TextureView textureView;
-        private static readonly string FOLDER_NAME = "/CustomVision";
-        private static int IMAGE_FOLDER_COUNT = 1;
         public static Android.Util.Size previewSize;
         public static ImageReader imageReader;
         internal static CameraDevice cameraDevice;
@@ -159,6 +157,7 @@ namespace CustomVision //name of our app
         public static bool isReady = false;
         public static bool wait = false;
         public static bool backCamera = false;
+        public static string sdCardPath = "";
 
         static readonly object _syncLock = new object();
         private SensorManager sensorManager;
@@ -179,6 +178,7 @@ namespace CustomVision //name of our app
             context = ApplicationContext;
             wait = Intent.GetBooleanExtra("wait", false);
             backCamera = Intent.GetBooleanExtra("backCamera", false);
+            sdCardPath = Intent.GetStringExtra("sdCardPath");
 
             // set parameters to 25%, no tilt, front camera no matter what
             backCamera = false;
@@ -194,30 +194,11 @@ namespace CustomVision //name of our app
             sensorManager = (SensorManager)GetSystemService(SensorService);
             gsensor = sensorManager.GetDefaultSensor(SensorType.Accelerometer);
 
-            string sdcardPath = Android.OS.Environment.ExternalStorageDirectory.Path + 
-                FOLDER_NAME + "/" + IMAGE_FOLDER_COUNT;
             textureView = new TextureView(this);
             SetContentView(textureView);
             Window.SetFlags(WindowManagerFlags.KeepScreenOn, WindowManagerFlags.KeepScreenOn);
+            tts = new Android.Speech.Tts.TextToSpeech(this, this);
 
-            if (Directory.Exists(sdcardPath))
-            {
-                while (Directory.Exists(sdcardPath))
-                {
-                    IMAGE_FOLDER_COUNT += 1;
-                    sdcardPath = Android.OS.Environment.ExternalStorageDirectory.Path + 
-                        FOLDER_NAME + "/" + IMAGE_FOLDER_COUNT;
-                }
-            }
-            if (!Directory.Exists(sdcardPath))
-            {
-                if (Android.Support.V4.Content.ContextCompat.CheckSelfPermission(this, 
-                    Manifest.Permission.WriteExternalStorage) == Permission.Granted)
-                {
-                    Directory.CreateDirectory(sdcardPath);
-                }
-                tts = new Android.Speech.Tts.TextToSpeech(this, this);
-            }
             inLane = MediaPlayer.Create(this, Resource.Raw.sound);
             left = MediaPlayer.Create(this, Resource.Raw.left90);
             right = MediaPlayer.Create(this, Resource.Raw.right90);
@@ -533,10 +514,8 @@ namespace CustomVision //name of our app
             {
                 DateTime currentDate = DateTime.Now;
                 long ts = currentDate.Ticks;
-                string sdcardPath = Android.OS.Environment.ExternalStorageDirectory.Path + 
-                    FOLDER_NAME + "/" + IMAGE_FOLDER_COUNT;
                 string fileName = prefix + ".  " + currentDate.TimeOfDay + ".png";
-                string FilePath = System.IO.Path.Combine(sdcardPath, fileName);
+                string FilePath = System.IO.Path.Combine(sdCardPath, fileName);
 
                 if (!File.Exists(FilePath))
                 {
@@ -590,8 +569,6 @@ namespace CustomVision //name of our app
         public static void SaveLog(string label, DateTime currentTime, int prefix)
         {
             string msg = prefix + ".  " + currentTime.TimeOfDay + "_" + label;
-            string sdCardPath = Android.OS.Environment.ExternalStorageDirectory.Path + FOLDER_NAME +
-                "/" + IMAGE_FOLDER_COUNT;
             string filePath = System.IO.Path.Combine(sdCardPath,"0_log.txt");
             lock (locker)
             {
@@ -606,8 +583,6 @@ namespace CustomVision //name of our app
         public static void SaveLog_thres(double label, DateTime currentTime, int prefix)
         {
             string msg = prefix + ".  " + currentTime.TimeOfDay + "_" + label;
-            string sdCardPath = Android.OS.Environment.ExternalStorageDirectory.Path + FOLDER_NAME +
-                "/" + IMAGE_FOLDER_COUNT;
             string filePath = System.IO.Path.Combine(sdCardPath,"0_threslog.txt");
             lock (locker)
             {
@@ -756,7 +731,7 @@ namespace CustomVision //name of our app
             }
         }
 
-        public static void ImplementImageProcessing(Bitmap resizedBitmap,int prefix)
+        public static void ImplementImageProcessing(Bitmap resizedBitmap,int prefix, bool speak)
         {
             // setting up image labels
             List<string> labels = new List<string>();
@@ -936,83 +911,88 @@ namespace CustomVision //name of our app
                     curOutput = bestResultSoFar;
                 }
 
-                if (curOutput == labels[2]) //going right
+                if (speak)
                 {
-                    //speaking left
-                    InterruptVoice(left);
-                    SaveLog("speak " + "left", DateTime.Now, prefix);
-                    left.Start(); 
-                }
-                else if (curOutput == labels[1]) //going left
-                {
-                    //speaking right
-                    InterruptVoice(right);
-                    SaveLog("speak " + "right", DateTime.Now, prefix);
-                    right.Start();
-                }
-
-                else if (curOutput == labels[4]) //going slight left
-                {
-                    //speaking slight right
-                    InterruptVoice(slightRight);
-                    SaveLog("speak " + "slight right", DateTime.Now, prefix);
-                    slightRight.Start();
-                }
-                else if (curOutput == labels[3]) //going slight right
-                {
-                    //speaking slight left
-                    InterruptVoice(slightLeft);
-                    SaveLog("speak " + "slight left", DateTime.Now, prefix);
-                    slightLeft.Start();
-                }
-                else if (curOutput == labels[6]) //going little left
-                {     
-                    //speaking little right
-                    InterruptVoice(littleRight);
-                    SaveLog("speak " + "little right", DateTime.Now, prefix);
-                    littleRight.Start();
-                }
-                else if (curOutput == labels[5]) //going little right
-                {
-                    //speaking little left
-                    InterruptVoice(littleLeft);
-                    SaveLog("speak " + "little left", DateTime.Now, prefix);
-                    littleLeft.Start();
-                }
-
-                else if (curOutput == labels[7]) // parallel - gone too far
-                {
-                    if (priorToParallel == "right") // gone too far right
+                    if (curOutput == labels[2]) //going right
                     {
-                        // speaking left
+                        //speaking left
                         InterruptVoice(left);
-                        SaveLog("speak left", DateTime.Now, prefix);
+                        SaveLog("speak " + "left", DateTime.Now, prefix);
                         left.Start();
-                    } else if (priorToParallel == "left") // gone too far left
+                    }
+                    else if (curOutput == labels[1]) //going left
                     {
-                        // speaking right
+                        //speaking right
                         InterruptVoice(right);
-                        SaveLog("speak right", DateTime.Now, prefix);
+                        SaveLog("speak " + "right", DateTime.Now, prefix);
                         right.Start();
                     }
-                }
 
-                else if (curOutput == labels[0])// going inlane
-                {
-                    if (previousOutput != curOutput && previousOutput != null) //checking if previous label = left or right
+                    else if (curOutput == labels[4]) //going slight left
                     {
-                        // play ding
-                        SaveLog("in lane ding play", DateTime.Now, prefix);
-                        InterruptVoice(inLane);
-                        inLane.Start();  
+                        //speaking slight right
+                        InterruptVoice(slightRight);
+                        SaveLog("speak " + "slight right", DateTime.Now, prefix);
+                        slightRight.Start();
                     }
-                }
-                else
-                {
-                    SaveLog("no conclusion made", DateTime.Now, prefix);
+                    else if (curOutput == labels[3]) //going slight right
+                    {
+                        //speaking slight left
+                        InterruptVoice(slightLeft);
+                        SaveLog("speak " + "slight left", DateTime.Now, prefix);
+                        slightLeft.Start();
+                    }
+                    else if (curOutput == labels[6]) //going little left
+                    {
+                        //speaking little right
+                        InterruptVoice(littleRight);
+                        SaveLog("speak " + "little right", DateTime.Now, prefix);
+                        littleRight.Start();
+                    }
+                    else if (curOutput == labels[5]) //going little right
+                    {
+                        //speaking little left
+                        InterruptVoice(littleLeft);
+                        SaveLog("speak " + "little left", DateTime.Now, prefix);
+                        littleLeft.Start();
+                    }
+
+                    else if (curOutput == labels[7]) // parallel - gone too far
+                    {
+                        if (priorToParallel == "right") // gone too far right
+                        {
+                            // speaking left
+                            InterruptVoice(left);
+                            SaveLog("speak left", DateTime.Now, prefix);
+                            left.Start();
+                        }
+                        else if (priorToParallel == "left") // gone too far left
+                        {
+                            // speaking right
+                            InterruptVoice(right);
+                            SaveLog("speak right", DateTime.Now, prefix);
+                            right.Start();
+                        }
+                    }
+
+                    else if (curOutput == labels[0])// going inlane
+                    {
+                        if (previousOutput != curOutput && previousOutput != null) //checking if previous label = left or right
+                        {
+                            // play ding
+                            SaveLog("in lane ding play", DateTime.Now, prefix);
+                            InterruptVoice(inLane);
+                            inLane.Start();
+                        }
+                    }
+                    else
+                    {
+                        SaveLog("no conclusion made", DateTime.Now, prefix);
+                    }
+
+                    previousOutput = curOutput; // store previous output
                 }
 
-                previousOutput = curOutput; // store previous output
             } else
             {
                 SaveLog("no lines detected", DateTime.Now, prefix);
@@ -1198,7 +1178,7 @@ namespace CustomVision //name of our app
                             MainActivity.bc.Add(preOpenCVBitmapPrefix);
                         }
 
-                        MainActivity.ImplementImageProcessing(resizedBitmap,prefix);
+                        MainActivity.ImplementImageProcessing(resizedBitmap,prefix, true);
                         MainActivity.SaveLog("created bitmap", DateTime.Now, prefix); // write when the bitmap is created to the log
                         
                         if (!MainActivity.bc.IsAddingCompleted)
