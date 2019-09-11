@@ -158,9 +158,6 @@ namespace CustomVision //name of our app
         private static System.Timers.Timer timer;
         public static bool isReady = false;
         public static bool wait = false;
-        public static bool tiltPhotos = false;
-        public static bool percent25 = false;
-        public static bool percent35 = false;
         public static bool backCamera = false;
 
         static readonly object _syncLock = new object();
@@ -181,15 +178,9 @@ namespace CustomVision //name of our app
             Platform.Init(this, savedInstanceState); // add this line to your code, it may also be called: bundle
             context = ApplicationContext;
             wait = Intent.GetBooleanExtra("wait", false);
-            tiltPhotos = Intent.GetBooleanExtra("tiltPhotos", false);
-            percent25 = Intent.GetBooleanExtra("25Percent", false);
-            percent35 = Intent.GetBooleanExtra("35Percent", false);
             backCamera = Intent.GetBooleanExtra("backCamera", false);
 
             // set parameters to 25%, no tilt, front camera no matter what
-            tiltPhotos = false;
-            percent25 = true;
-            percent35 = false;
             backCamera = false;
 
             if (backCamera)
@@ -819,14 +810,7 @@ namespace CustomVision //name of our app
                     Org.Opencv.Core.Point start = new Org.Opencv.Core.Point(x1, y1);
                     Org.Opencv.Core.Point end = new Org.Opencv.Core.Point(x2, y2);
 
-                    double coefficient = 1; // default. If we haven't checked a checkbox then we want all lines
-                    if (percent25)
-                    {
-                        coefficient = .75; // we want lines that have at least 1 point in the top 3/4 of image 
-                    } else if (percent35)
-                    {
-                        coefficient = .66; // we want lines that have at least 1 point in the top 2/3 of image
-                    }
+                    double coefficient = .75; // we want lines that have at least 1 point in the top 3/4 of image 
 
                     if (x1 != x2 && Math.Min(y1, y2) < coefficient*resizedBitmap.Height)
                     // we choose to reject perfectly vertical lines because the slope and
@@ -1212,77 +1196,6 @@ namespace CustomVision //name of our app
                         {
                             BitmapPrefix preOpenCVBitmapPrefix = new BitmapPrefix(preOpenCvBitmap, prefix);
                             MainActivity.bc.Add(preOpenCVBitmapPrefix);
-                        }
-
-                        if (MainActivity.tiltPhotos)
-                        {
-                            // accounting for tilt
-                            var matrix = new Matrix();
-                            float angle = -1 * (float)MainActivity.rotatedAngle;
-                            matrix.PostRotate(angle);
-                            resizedBitmap = Bitmap.CreateBitmap(resizedBitmap, 0, 0, resizedBitmap.Width, resizedBitmap.Height, matrix, true);
-                            BitmapPrefix bitmapPrefixRotated = new BitmapPrefix(resizedBitmap, prefix); // **TODO
-
-                            //Find largest rectangle from rotated image////////////////////
-                            //https://stackoverflow.com/questions/16702966/rotate-image-and-crop-out-black-borders/16778797#16778797
-
-                            double angle_radian = Math.Abs(angle) * Math.PI / 180;
-                            int quadrant = (int)Math.Floor(angle_radian / (Math.PI / 2)) & 3;
-                            double sign_alpha;
-                            if ((quadrant & 1) == 0)
-                            {
-                                sign_alpha = angle_radian;
-                            }
-                            else
-                            {
-                                sign_alpha = (float)Math.PI - angle_radian;
-                            }
-
-                            double alpha = (sign_alpha % Math.PI + Math.PI) % Math.PI;
-
-                            double bb_w = w * Math.Cos(alpha) + h * Math.Sin(alpha);
-                            double bb_h = w * Math.Sin(alpha) + h * Math.Cos(alpha);
-                            double gamma;
-                            if (w < h)
-                            {
-                                gamma = Math.Atan2(bb_w, bb_w);
-                            }
-                            else
-                            {
-                                gamma = Math.Atan2(bb_w, bb_w);
-                            }
-
-                            double delta = Math.PI - alpha - gamma;
-
-                            double length;
-                            if (w < h)
-                            {
-                                length = h;
-                            }
-                            else
-                            {
-                                length = w;
-                            }
-
-                            double d = length * Math.Cos(alpha);
-                            double a = d * Math.Sin(alpha) / Math.Sin(delta);
-
-                            double y = a * Math.Cos(gamma);
-                            double x = y * Math.Tan(gamma);
-
-                            double c_width = bb_w - 2 * x;
-                            double c_height = bb_h - 2 * y;
-                            int cx = resizedBitmap.Width / 2 - (int)c_width / 2;
-                            int cy = resizedBitmap.Height / 2 - (int)c_height / 2;
-                            resizedBitmap = Bitmap.CreateBitmap(resizedBitmap, cx, cy, (int)c_width, (int)c_height);
-                            BitmapPrefix bitmapPrefixCropped = new BitmapPrefix(resizedBitmap, prefix); // **TODO
-                            ///End of maximum rectangle calculation from rotated image//
-
-                            if (!MainActivity.bc.IsAddingCompleted)
-                            {
-                                MainActivity.bc.Add(bitmapPrefixRotated);
-                                MainActivity.bc.Add(bitmapPrefixCropped);
-                            }
                         }
 
                         MainActivity.ImplementImageProcessing(resizedBitmap,prefix);

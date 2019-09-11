@@ -3,31 +3,23 @@
     android:orientation="vertical"
     android:layout_width="match_parent"
     android:layout_height="match_parent">
-	<CheckBox
-		android:id="@+id/tilt_photos"
-		android:layout_width="match_parent"
-		android:layout_height="wrap_content"
-		android:visibility="invisible"
-		android:text="@string/tilt_photo" />
-	<CheckBox
-		android:id="@+id/twenty_five_percent"
-		android:layout_width="match_parent"
-		android:layout_height="wrap_content"
-		android:visibility = "invisible"
-		android:text="@string/twenty_five" />
-	<CheckBox
-		android:id="@+id/thirty_five_percent"
-		android:layout_width="match_parent"
-		android:layout_height="wrap_content"
-		android:visibility="invisible"
-		android:text="@string/thirty_five" />
-	<CheckBox
+	
+    <CheckBox
 		android:id="@+id/back_camera_use"
 		android:layout_width="match_parent"
 		android:layout_height="wrap_content"
-		android:visibility = "invisible"
+		android:visibility = "visible"
 		android:text="@string/back_camera" />
-	<Button
+	
+    <Button
+		android:id="@+id/start_btn_benchmark"
+		android:layout_width="match_parent"
+		android:layout_height="match_parent"
+		android:text="@string/benchmark"
+		android:layout_weight = "1"
+		android:layout_marginBottom="0.0dp" />
+
+    <Button
 		android:id="@+id/start_btn"
 		android:layout_width="match_parent"
 		android:layout_height="match_parent"
