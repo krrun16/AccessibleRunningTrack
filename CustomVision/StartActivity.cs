@@ -119,10 +119,18 @@ namespace CustomVision
                 {
                     Bitmap test = GetBitmapFromAssets(fileName);
                     MainActivity.ImplementImageProcessing(test, idx, false);
+
+                    // save output image
+                    MemoryStream byteArrayOutputStream = new MemoryStream();
+                    test.Compress(Bitmap.CompressFormat.Png, 100,
+                            byteArrayOutputStream);
+                    byte[] png = byteArrayOutputStream.ToArray();
+                    MainActivity.SaveBitmap(png, idx);
+                    test.Dispose(); //release the memory to handle OutOfMemory error
                     idx++;
                 }
-
             }
+            System.Environment.Exit(0);
         }
 
         private void StartButton_Click(object sender, EventArgs e)

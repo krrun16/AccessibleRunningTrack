@@ -572,7 +572,7 @@ namespace CustomVision //name of our app
 
         public static void SaveLog(string label, DateTime currentTime, int prefix)
         {
-            string msg = prefix + ".  " + currentTime.TimeOfDay + "_" + label;
+            string msg = prefix + ".  " + currentTime.TimeOfDay + ": " + label;
             string filePath = System.IO.Path.Combine(sdCardPath,"0_log.txt");
             lock (locker)
             {
@@ -814,8 +814,7 @@ namespace CustomVision //name of our app
 
                 if (lineInfos.Length >= 2) // since we have two unknowns, x and y, we need at least 2 lines
                 {
-                    Boolean isParallel = false;
-                    _ = maxSlope - minSlope;
+                    bool isParallel = false;
                     if (maxSlope - minSlope < .1)
                     {
                         // lines are parallel
