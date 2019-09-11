@@ -153,7 +153,322 @@
     <AndroidResource Include="Resources\Raw\righttiny.wav" />
   </ItemGroup>
   <ItemGroup>
-    <AndroidAsset Include="Assets\96.  180736.8747530.png" />
+    <AndroidAsset Include="Assets\75.  180800.4138430.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AndroidAsset Include="Assets\77.  180959.7401890.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AndroidAsset Include="Assets\79.  180735.4185440.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AndroidAsset Include="Assets\80.  180915.0838690.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AndroidAsset Include="Assets\81.  180851.6040700.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AndroidAsset Include="Assets\81.  181045.1000330.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AndroidAsset Include="Assets\82.  180801.0610300.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AndroidAsset Include="Assets\82.  181000.1485880.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AndroidAsset Include="Assets\85.  181045.4121350.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AndroidAsset Include="Assets\88.  180852.2460210.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AndroidAsset Include="Assets\88.  180915.8057520.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AndroidAsset Include="Assets\88.  181000.7173150.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AndroidAsset Include="Assets\89.  181045.7046370.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AndroidAsset Include="Assets\92.  180827.5940910.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AndroidAsset Include="Assets\92.  180939.0848340.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AndroidAsset Include="Assets\92.  181045.9395180.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AndroidAsset Include="Assets\93.  181001.1628220.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AndroidAsset Include="Assets\94.  180736.6844240.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AndroidAsset Include="Assets\94.  180852.8226960.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AndroidAsset Include="Assets\95.  180916.4154120.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AndroidAsset Include="Assets\96.  181046.2127100.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AndroidAsset Include="Assets\97.  180802.4324010.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AndroidAsset Include="Assets\99.  180737.1277300.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AndroidAsset Include="Assets\99.  180828.2644360.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AndroidAsset Include="Assets\99.  180939.6617720.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AndroidAsset Include="Assets\99.  181001.6707120.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AndroidAsset Include="Assets\102.  181046.6261390.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AndroidAsset Include="Assets\104.  181002.0760330.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AndroidAsset Include="Assets\105.  180737.6715320.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AndroidAsset Include="Assets\105.  180828.7935540.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AndroidAsset Include="Assets\105.  180853.7463940.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AndroidAsset Include="Assets\105.  180940.2200090.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AndroidAsset Include="Assets\106.  180803.2031010.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AndroidAsset Include="Assets\106.  180917.3808720.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AndroidAsset Include="Assets\110.  180738.1549800.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AndroidAsset Include="Assets\111.  180829.3140940.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AndroidAsset Include="Assets\111.  180854.2357070.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AndroidAsset Include="Assets\111.  180940.7786310.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AndroidAsset Include="Assets\113.  180803.8014360.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AndroidAsset Include="Assets\113.  180917.9802440.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AndroidAsset Include="Assets\115.  180738.6100410.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AndroidAsset Include="Assets\115.  181002.8657270.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AndroidAsset Include="Assets\118.  180829.9107030.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AndroidAsset Include="Assets\118.  180854.7856600.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AndroidAsset Include="Assets\118.  180941.4439010.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AndroidAsset Include="Assets\120.  180739.0307190.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AndroidAsset Include="Assets\120.  180804.3593780.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AndroidAsset Include="Assets\120.  180918.5850540.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AndroidAsset Include="Assets\120.  181003.2574400.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AndroidAsset Include="Assets\124.  180830.4327650.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AndroidAsset Include="Assets\124.  180855.1839850.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AndroidAsset Include="Assets\124.  180942.0351690.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AndroidAsset Include="Assets\125.  180739.4781630.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AndroidAsset Include="Assets\126.  181003.7377190.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AndroidAsset Include="Assets\128.  180805.0773470.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AndroidAsset Include="Assets\128.  180919.2607630.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AndroidAsset Include="Assets\130.  180739.9066400.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AndroidAsset Include="Assets\130.  180830.9628040.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AndroidAsset Include="Assets\130.  180855.5724040.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AndroidAsset Include="Assets\130.  180942.5824750.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AndroidAsset Include="Assets\131.  181004.0243060.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AndroidAsset Include="Assets\135.  180740.4222060.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AndroidAsset Include="Assets\135.  180805.6607020.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AndroidAsset Include="Assets\135.  180919.8245780.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AndroidAsset Include="Assets\137.  180831.6202060.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AndroidAsset Include="Assets\137.  180856.0178820.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AndroidAsset Include="Assets\137.  180943.2272040.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AndroidAsset Include="Assets\137.  181004.5768720.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AndroidAsset Include="Assets\140.  180740.9034550.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AndroidAsset Include="Assets\142.  180806.2122400.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AndroidAsset Include="Assets\142.  180920.3855810.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AndroidAsset Include="Assets\142.  181004.9979570.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AndroidAsset Include="Assets\143.  180832.1388170.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AndroidAsset Include="Assets\143.  180856.3922610.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AndroidAsset Include="Assets\143.  180943.8467480.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AndroidAsset Include="Assets\145.  180741.3860670.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AndroidAsset Include="Assets\148.  181005.4972100.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AndroidAsset Include="Assets\150.  180741.8268150.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AndroidAsset Include="Assets\155.  180742.2489140.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AndroidAsset Include="Assets\156.  180833.3895890.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AndroidAsset Include="Assets\156.  180857.3671630.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AndroidAsset Include="Assets\156.  180945.0720110.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AndroidAsset Include="Assets\157.  180807.3464580.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AndroidAsset Include="Assets\157.  180921.6579100.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AndroidAsset Include="Assets\160.  180742.7163020.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AndroidAsset Include="Assets\162.  180833.9138670.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AndroidAsset Include="Assets\162.  180857.8261370.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AndroidAsset Include="Assets\162.  180945.6908630.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AndroidAsset Include="Assets\164.  180808.0173100.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AndroidAsset Include="Assets\164.  180922.3263810.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AndroidAsset Include="Assets\165.  180743.2000810.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AndroidAsset Include="Assets\169.  180834.5958050.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AndroidAsset Include="Assets\169.  180858.3456080.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AndroidAsset Include="Assets\169.  180946.3933170.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AndroidAsset Include="Assets\170.  180743.6965470.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AndroidAsset Include="Assets\171.  180808.6597840.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AndroidAsset Include="Assets\171.  180922.9589630.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AndroidAsset Include="Assets\175.  180744.1907870.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AndroidAsset Include="Assets\175.  180858.8100950.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AndroidAsset Include="Assets\179.  180809.3787800.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AndroidAsset Include="Assets\179.  180923.6740960.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AndroidAsset Include="Assets\180.  180744.6638170.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AndroidAsset Include="Assets\186.  180809.9770790.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AndroidAsset Include="Assets\186.  180924.3267980.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AndroidAsset Include="Assets\187.  180810.0641550.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <AndroidAsset Include="Assets\190.  180924.7046640.png" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath)\Xamarin\Android\Xamarin.Android.CSharp.targets" />
 </Project>
