@@ -2,8 +2,14 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:orientation="vertical"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-	android:weightSum="2">
+    android:layout_height="match_parent">
+    <Button
+        android:id="@+id/start_btn_benchmark"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:text="@string/benchmark"
+        android:layout_weight="1"
+        android:layout_marginBottom="0.0dp" />
 	<Button
 		android:id="@+id/start_btn"
 		android:layout_width="match_parent"
@@ -13,10 +19,11 @@
 		android:layout_marginBottom="0.0dp" />
 
 	<Button
-		android:id="@+id/start_btn_no_vid"
+		android:id="@+id/start_btn_tutorial"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
 		android:layout_weight="1"
-        android:text="@string/no_video" />
+        android:text="@string/tutorial"
+        android:layout_marginBottom="0.0dp" />
 
 </LinearLayout>
