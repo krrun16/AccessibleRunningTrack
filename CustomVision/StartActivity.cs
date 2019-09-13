@@ -94,7 +94,7 @@ namespace CustomVision
             }
         }
 
-        private Bitmap getBitmapFromAssets(string fileName)
+        private Bitmap GetBitmapFromAssets(string fileName)
         {
             AssetManager assetManager = Application.Context.Assets;
             Stream istr = assetManager.Open(fileName);
@@ -114,7 +114,7 @@ namespace CustomVision
             {
                 if (filename.Contains(".png"))
                 {
-                    Bitmap test = getBitmapFromAssets(filename);
+                    Bitmap test = GetBitmapFromAssets(filename);
                     MainActivity.ImplementImageProcessing(test, idx, false);
                     // save output image
                     MemoryStream byteArrayOutputStream = new MemoryStream();
