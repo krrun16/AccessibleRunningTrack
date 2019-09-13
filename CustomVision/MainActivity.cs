@@ -114,8 +114,6 @@ namespace CustomVision //name of our app
         private static Context context;
         public static int cameraFacing;
         public static TextureView textureView;
-        private static readonly string FOLDER_NAME = "/CustomVision";
-        private static int IMAGE_FOLDER_COUNT = 1;
         public static readonly ImageClassifier imageClassifier = new ImageClassifier();
         public static Android.Util.Size previewSize;
         public static ImageReader imageReader;
@@ -148,6 +146,7 @@ namespace CustomVision //name of our app
         private static System.Timers.Timer timer;
         public static bool isReady = false;
         public static bool wait = false;
+        public static string sdCardPath = "";
 
 
         protected override void OnCreate(Bundle savedInstanceState)
@@ -156,34 +155,16 @@ namespace CustomVision //name of our app
             context = ApplicationContext;
             show_video = true;
             wait = Intent.GetBooleanExtra("wait", false);
+            sdCardPath = Intent.GetStringExtra("sdCardPath");
             cameraFacing = (int)LensFacing.Front; 
-            string sdcardPath = Android.OS.Environment.ExternalStorageDirectory.Path + 
-                FOLDER_NAME + "/" + IMAGE_FOLDER_COUNT;
             if (show_video)
             {
                 textureView = new TextureView(this);
                 SetContentView(textureView);
                 Window.SetFlags(WindowManagerFlags.KeepScreenOn, WindowManagerFlags.KeepScreenOn);
             }
+            tts = new TextToSpeech(this, this);
 
-            if (Directory.Exists(sdcardPath))
-            {
-                while (Directory.Exists(sdcardPath))
-                {
-                    IMAGE_FOLDER_COUNT += 1;
-                    sdcardPath = Android.OS.Environment.ExternalStorageDirectory.Path + 
-                        FOLDER_NAME + "/" + IMAGE_FOLDER_COUNT;
-                }
-            }
-            if (!Directory.Exists(sdcardPath))
-            {
-                if (Android.Support.V4.Content.ContextCompat.CheckSelfPermission(this, 
-                    Manifest.Permission.WriteExternalStorage) == Permission.Granted)
-                {
-                    Directory.CreateDirectory(sdcardPath);
-                }
-                tts = new TextToSpeech(this, this);
-            }
             mPlayer = MediaPlayer.Create(this, Resource.Raw.sound);
             if (wait == true)
             {
@@ -473,10 +454,8 @@ namespace CustomVision //name of our app
             {
                 DateTime currentDate = DateTime.Now;
                 long ts = currentDate.Ticks;
-                string sdcardPath = Android.OS.Environment.ExternalStorageDirectory.Path + 
-                    FOLDER_NAME + "/" + IMAGE_FOLDER_COUNT;
                 string fileName = prefix + ".  " + currentDate.TimeOfDay + ".png";
-                string FilePath = System.IO.Path.Combine(sdcardPath, fileName);
+                string FilePath = System.IO.Path.Combine(sdCardPath, fileName);
 
                 if (!File.Exists(FilePath))
                 {
@@ -530,8 +509,6 @@ namespace CustomVision //name of our app
         public static void SaveLog(string label, DateTime currentTime, int prefix)
         {
             string msg = prefix + ".  " + currentTime.TimeOfDay + "_" + label;
-            string sdCardPath = Android.OS.Environment.ExternalStorageDirectory.Path + FOLDER_NAME +
-                "/" + IMAGE_FOLDER_COUNT;
             string filePath = System.IO.Path.Combine(sdCardPath,"0_log.txt");
             lock (locker)
             {
@@ -546,8 +523,6 @@ namespace CustomVision //name of our app
         public static void SaveLog_thres(double label, DateTime currentTime, int prefix)
         {
             string msg = prefix + ".  " + currentTime.TimeOfDay + "_" + label;
-            string sdCardPath = Android.OS.Environment.ExternalStorageDirectory.Path + FOLDER_NAME +
-                "/" + IMAGE_FOLDER_COUNT;
             string filePath = System.IO.Path.Combine(sdCardPath,"0_threslog.txt");
             lock (locker)
             {
@@ -636,7 +611,7 @@ namespace CustomVision //name of our app
             
         }
 
-        public static void ImplementImageProcessing(Bitmap resizedBitmap,int prefix)
+        public static void ImplementImageProcessing(Bitmap resizedBitmap,int prefix, bool speak)
         {
             
             Mat imgMat = new Mat();
@@ -747,21 +722,24 @@ namespace CustomVision //name of our app
                 curOutput = bestResultSoFar;
             }
             // string[] input = { "inlane", "left", "right" }
-            
-            if (curOutput == labels[2]) //going right
+
+            if (speak)
             {
-                Speak(labels[1]); //speaking left
-            }
-            else if (curOutput == labels[1]) //going left
-            {
-                Speak(labels[2]); //speaking right
-            }
-            else if(curOutput == labels[0])// going inlane
-            {
-                if(previousOutput != curOutput && previousOutput != null) //checking if previous label = left or right
+                if (curOutput == labels[2]) //going right
                 {
-                    // play ding
-                    mPlayer.Start();
+                    Speak(labels[1]); //speaking left
+                }
+                else if (curOutput == labels[1]) //going left
+                {
+                    Speak(labels[2]); //speaking right
+                }
+                else if (curOutput == labels[0])// going inlane
+                {
+                    if (previousOutput != curOutput && previousOutput != null) //checking if previous label = left or right
+                    {
+                        // play ding
+                        mPlayer.Start();
+                    }
                 }
             }
 
@@ -878,7 +856,7 @@ namespace CustomVision //name of our app
                         //resize the bitmap
                         Bitmap scaledBitmap = Bitmap.CreateScaledBitmap(bitmap, inputsize, inputsize, false);
                         Bitmap resizedBitmap = scaledBitmap.Copy(Bitmap.Config.Argb8888, false);
-                        MainActivity.ImplementImageProcessing(resizedBitmap,prefix);
+                        MainActivity.ImplementImageProcessing(resizedBitmap,prefix, true);
                         //Utils.MatToBitmap(imgMat, resizedBitmap);
                         MainActivity.SaveLog("created bitmap", DateTime.Now, prefix); // write when the bitmap is created to the log
                         BitmapPrefix bitmapPrefix = new BitmapPrefix(resizedBitmap, prefix); // **TODO
