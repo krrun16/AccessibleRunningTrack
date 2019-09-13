@@ -1,11 +1,9 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <resources>
   <string name="show_video">Start</string>
-  <string name="tilt_photo">Tilt Photos?</string>
   <string name="tutorial">Tutorial</string>
   <string name="app_name">Accessible Track</string>
-  <string name="twenty_five">25% filter?</string>
-  <string name="thirty_five">35% filter?</string>
   <string name="back_camera">Back Camera?</string>
+  <string name="benchmark">Run Photos Stored on Phone</string>
    
 </resources>
