@@ -114,7 +114,6 @@ namespace CustomVision //name of our app
         private static Context context;
         public static int cameraFacing;
         public static TextureView textureView;
-        public static readonly ImageClassifier imageClassifier = new ImageClassifier();
         public static Android.Util.Size previewSize;
         public static ImageReader imageReader;
         internal static CameraDevice cameraDevice;
@@ -123,7 +122,6 @@ namespace CustomVision //name of our app
         public static CaptureRequest.Builder captureRequestBuilder;
         internal static CameraCaptureSession cameraCaptureSession;
         public string CameraId { get; private set; }
-        private int DSI_height;
         private int DSI_width;
         public static int canProcessImage = 0;
         public static BlockingCollection<BitmapPrefix> bc = new BlockingCollection<BitmapPrefix>();
@@ -133,12 +131,7 @@ namespace CustomVision //name of our app
         public static bool show_video = false;
         public static string PreviousText = "noLabel";
         private static String previousOutput = null;
-
-        private static readonly string[] permissions = {
-            Manifest.Permission.WriteExternalStorage,
-            Manifest.Permission.Camera
-        };
-        private static List<string> storeWindow = new List<string>();
+        private static readonly List<string> storeWindow = new List<string>();
         private static TextToSpeech tts;
         private static readonly int WINDOW_SIZE = 5;
         private static MediaPlayer mPlayer;
@@ -168,9 +161,11 @@ namespace CustomVision //name of our app
             mPlayer = MediaPlayer.Create(this, Resource.Raw.sound);
             if (wait == true)
             {
-                timer = new System.Timers.Timer();
-                timer.Interval = 30000;
-                timer.Enabled = true;
+                timer = new System.Timers.Timer
+                {
+                    Interval = 30000,
+                    Enabled = true
+                };
                 timer.Elapsed += (object sender, System.Timers.ElapsedEventArgs e) =>
                 {
                     timer.Stop();
@@ -405,19 +400,6 @@ namespace CustomVision //name of our app
         {
         }
 
-        public static void RecognizeImage(Bitmap rgbBitmap, int prefix)
-        {
-            if(imageClassifier.RecognizeImage1(rgbBitmap, prefix) == "straight")
-            {
-                string res = imageClassifier.RecognizeImage2(rgbBitmap, prefix);
-                SaveLog("Recognize image", DateTime.Now, prefix);
-            }
-            else
-            {
-               SaveLog("Curve Image", DateTime.Now, prefix);
-            }
-        }
-
         //Update the result in the list
         public static void StoreResult(string res)
         {
@@ -487,23 +469,36 @@ namespace CustomVision //name of our app
             V.Buffer.Get(data, Yb, Vb);
             U.Buffer.Get(data, Yb + Vb, Ub);
             RenderScript rs = RenderScript.Create(context);
-            ScriptIntrinsicYuvToRGB yuvToRgbIntrinsic = ScriptIntrinsicYuvToRGB.Create(
-                rs, Element.U8_4(rs));
+            Bitmap bmpout = Bitmap.CreateBitmap(W, H, Bitmap.Config.Argb8888);
+            using (ScriptIntrinsicYuvToRGB yuvToRgbIntrinsic = ScriptIntrinsicYuvToRGB.Create(
+                rs, Element.U8_4(rs)))
+                NewMethod(W, H, data, rs, bmpout, yuvToRgbIntrinsic);
 
-            Type.Builder yuvType = new Type.Builder(rs, Element.U8(rs)).SetX(data.Length);
-            Allocation inAll = Allocation.CreateTyped(rs, yuvType.Create());
-
-            Type.Builder rgbaType = new Type.Builder(rs, Element.RGBA_8888(rs)).SetX(W).SetY(H);
-            Allocation outAll = Allocation.CreateTyped(rs, rgbaType.Create());
-
-            Bitmap bmpout = Bitmap.CreateBitmap(W, H, Bitmap.Config.Argb8888); 
-            inAll.CopyFromUnchecked(data);
-
-            yuvToRgbIntrinsic.SetInput(inAll);
-            yuvToRgbIntrinsic.ForEach(outAll);
-            outAll.CopyTo(bmpout);
             image.Close();
             return bmpout;
+        }
+
+        private static void NewMethod(int W, int H, byte[] data, RenderScript rs, Bitmap bmpout, ScriptIntrinsicYuvToRGB yuvToRgbIntrinsic)
+        {
+            using (Type.Builder builder = new Type.Builder(rs, Element.U8(rs)))
+            {
+                using (Type.Builder yuvType = builder.SetX(data.Length))
+                {
+                    Allocation inAll = Allocation.CreateTyped(rs, yuvType.Create());
+                    inAll.CopyFromUnchecked(data);
+                    yuvToRgbIntrinsic.SetInput(inAll);
+                }
+            }
+
+            using (Type.Builder builder1 = new Type.Builder(rs, Element.RGBA_8888(rs)))
+            {
+                using (Type.Builder rgbaType = builder1.SetX(W).SetY(H))
+                {
+                    Allocation outAll = Allocation.CreateTyped(rs, rgbaType.Create());
+                    yuvToRgbIntrinsic.ForEach(outAll);
+                    outAll.CopyTo(bmpout);
+                }
+            }
         }
 
         public static void SaveLog(string label, DateTime currentTime, int prefix)
@@ -550,7 +545,6 @@ namespace CustomVision //name of our app
                             cameraCharacteristics.Get(
                                 CameraCharacteristics.ScalerStreamConfigurationMap);
                         DisplayMetrics displayMetrics = Resources.DisplayMetrics;
-                        DSI_height = displayMetrics.HeightPixels;
                         DSI_width = displayMetrics.WidthPixels;
                         previewSize = streamConfigurationMap.GetOutputSizes(
                             (int)ImageFormatType.Yuv420888)[0];
@@ -663,11 +657,10 @@ namespace CustomVision //name of our app
                 Org.Opencv.Core.Point end = new Org.Opencv.Core.Point(x2, y2);
                 double dx = x1 - x2;
                 double dy = y1 - y2;
-                double dist = Math.Sqrt(dx * dx + dy * dy);
                 double angle = Math.Atan2(dy, dx) * (float)(180 / Math.PI); //measure slope
                 if (angle < 0)
                 {
-                    angle = angle + 180;
+                    angle += 180;
                 }
                 Imgproc.Line(imgMat, start, end, new Scalar(0, 255, 0, 255), 1);
                 sumOfAngle += angle; 
@@ -711,7 +704,7 @@ namespace CustomVision //name of our app
             StoreResult(currentLabel);
             SaveLog("current result: " + currentLabel, DateTime.Now, prefix);
             string bestResultSoFar=GetTopResult(labels);
-            String curOutput = null;
+            string curOutput;
             if (bestResultSoFar == null)
             {
                 curOutput = currentLabel;
@@ -850,21 +843,22 @@ namespace CustomVision //name of our app
 
                     if (bitmap != null )
                     {
-                        //retrieve the input size from the ImageClassifier
-                        int inputsize = MainActivity.imageClassifier.getInputSize();
+                        int inputsize = 224;
 
                         //resize the bitmap
-                        Bitmap scaledBitmap = Bitmap.CreateScaledBitmap(bitmap, inputsize, inputsize, false);
-                        Bitmap resizedBitmap = scaledBitmap.Copy(Bitmap.Config.Argb8888, false);
-                        MainActivity.ImplementImageProcessing(resizedBitmap,prefix, true);
-                        //Utils.MatToBitmap(imgMat, resizedBitmap);
-                        MainActivity.SaveLog("created bitmap", DateTime.Now, prefix); // write when the bitmap is created to the log
-                        BitmapPrefix bitmapPrefix = new BitmapPrefix(resizedBitmap, prefix); // **TODO
-                        if (!MainActivity.bc.IsAddingCompleted) // **TODO
+                        using (Bitmap scaledBitmap = Bitmap.CreateScaledBitmap(bitmap, inputsize, inputsize, false))
                         {
-                            MainActivity.bc.Add(bitmapPrefix); // **TODO
-                            //MainActivity.RecognizeImage(resizedBitmap, prefix); // call the classifier to recognize the resizedimage
-                        }
+                            Bitmap resizedBitmap = scaledBitmap.Copy(Bitmap.Config.Argb8888, false);
+                            MainActivity.ImplementImageProcessing(resizedBitmap, prefix, true);
+                            //Utils.MatToBitmap(imgMat, resizedBitmap);
+                            MainActivity.SaveLog("created bitmap", DateTime.Now, prefix); // write when the bitmap is created to the log
+                            BitmapPrefix bitmapPrefix = new BitmapPrefix(resizedBitmap, prefix); // **TODO
+                            if (!MainActivity.bc.IsAddingCompleted) // **TODO
+                            {
+                                MainActivity.bc.Add(bitmapPrefix); // **TODO
+                                                                   //MainActivity.RecognizeImage(resizedBitmap, prefix); // call the classifier to recognize the resizedimage
+                            }
+                        }  
                     }
                     image.Close(); // This closes the image so the phone no longer has to hold onto 
                     // it, otherwise it will slow the system and stop collecting pictures
