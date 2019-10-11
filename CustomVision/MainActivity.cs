@@ -745,7 +745,7 @@ namespace CustomVision //name of our app
 
             // preparing image
             Mat imgMat = new Mat();
-            Utils.BitmapToMat(resizedBitmap, imgMat);
+            Utils.BitmapToMat(resizedBitmap, imgMat); // convert bitmap to matrix to work with OpenCV
             imgMat = DetectColor(imgMat);
 
             // blur image
@@ -1040,15 +1040,19 @@ namespace CustomVision //name of our app
 
         private static Mat DetectColor(Mat img)
         {
+            // create two different masks
             Mat mask1 = new Mat();
             Mat mask2 = new Mat();
-            Mat hsvImg = new Mat();
+            Mat hsvImg = new Mat(); // convert the image from RGB to HSV (note that OpenCV HSV values are different than general HSV)
             Imgproc.CvtColor(img, hsvImg, Imgproc.ColorRgb2hsv, 0);
+
+            // create the range of color for the two masks
             Core.InRange(hsvImg, new Scalar(0, 50, 20), new Scalar(10, 255, 255), mask1);
             Core.InRange(hsvImg, new Scalar(160, 50, 20), new Scalar(180, 255, 255), mask2);
+
             Mat output = new Mat();
-            Core.Bitwise_or(mask1, mask2, mask1);
-            Core.Bitwise_and(img, img, output, mask1);
+            Core.Bitwise_or(mask1, mask2, mask1); // combine the two masks and save it into mask1
+            Core.Bitwise_and(img, img, output, mask1); // return the image after only keeping what is in the mask 
             mask1.Release();
             mask2.Release();
             hsvImg.Release();
@@ -1135,7 +1139,7 @@ namespace CustomVision //name of our app
             if (1 == Interlocked.CompareExchange(ref MainActivity.canProcessImage, 0, 1)) // if canProcessImage = 1 -> set canProcessImage = 0 immediately and return 1
                 // if canProcessImage = 0, so it isn't equal to the third parameter, the method returns 0.
             {
-                if (!MainActivity.bc.IsAddingCompleted) // **TODO
+                if (!MainActivity.bc.IsAddingCompleted) // If we haven't finished the walk session
                 {
                     int prefix = Interlocked.Increment(ref PREFIX); // thread safe way to create the number that is attached to the photo and the log file
                     // equivalent to prefix = prefix + 1;
@@ -1160,13 +1164,14 @@ namespace CustomVision //name of our app
                             int cx = bitmap.Width / 2;
                             int cy = bitmap.Height / 2;
                             Matrix matrix = new Matrix();
-                            matrix.PostScale(-1, 1, cx, cy);
+                            matrix.PostScale(-1, 1, cx, cy); // we have to reflect the front camera's image
                             bitmap = Bitmap.CreateBitmap(bitmap, 0, 0, bitmap.Width, bitmap.Height, matrix, true);
                         }
                     }
 
                     if (bitmap != null)
                     {
+                        // resize to 224x224
                         int inputsize = 224;
                         //resize the bitmap
                         using (Bitmap scaledBitmap = Bitmap.CreateScaledBitmap(bitmap, inputsize, inputsize, false))
