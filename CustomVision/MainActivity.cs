@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Threading.Tasks;
 using Android.App;
 using Android.Content.PM;
@@ -25,6 +25,8 @@ using Org.Opencv.Imgproc;
 using Size = Org.Opencv.Core.Size;
 using Android.Hardware;
 using Xamarin.Essentials;
+using Rect = Org.Opencv.Core.Rect;
+using Org.Opencv.Objdetect;
 
 namespace CustomVision //name of our app
 {
@@ -158,6 +160,10 @@ namespace CustomVision //name of our app
         private Sensor gsensor;
         private float[] mGravity = new float[3];
         public static double rotatedAngle;
+        private static Android.Content.Res.AssetManager assets = Application.Context.Assets;
+
+        private static bool colorFound = false;
+        private static Scalar[] scalars = new Scalar[4];
 
         public override void OnRequestPermissionsResult(int requestCode, string[] permissions, [GeneratedEnum] Android.Content.PM.Permission[] grantResults)
         {
@@ -746,6 +752,12 @@ namespace CustomVision //name of our app
             // preparing image
             Mat imgMat = new Mat();
             Utils.BitmapToMat(resizedBitmap, imgMat); // convert bitmap to matrix to work with OpenCV
+
+            // Detect Obstacles TODO text to speech warning
+            MatOfRect rects = new MatOfRect();
+            bool collision = DetectObstacles(imgMat, rects);
+
+            // Detect Color
             imgMat = DetectColor(imgMat);
 
             // blur image
@@ -769,6 +781,13 @@ namespace CustomVision //name of our app
             int minLineSize = 50;
             int lineGap = 8;
             Imgproc.HoughLinesP(cannyMat, lines, 1, Math.PI / 180, threshold, minLineSize, lineGap);
+
+            // Draw boxes around pedestrians
+            Rect[] rectArr = rects.ToArray();
+            foreach (Rect r in rectArr)
+            {
+                Imgproc.Rectangle(imgMat, r.Tl(), r.Br(), new Scalar(0, 255, 0, 255), 1);
+            }
 
             if (lines.Rows() > 0) // lines exist in the image
             {
@@ -1038,6 +1057,89 @@ namespace CustomVision //name of our app
             }
         }
 
+        public static bool DetectObstacles(Mat imgMat, MatOfRect rects)
+        {
+            // Detect Pedestrian
+            HOGDescriptor hog = new HOGDescriptor();
+            hog.SetSVMDetector(HOGDescriptor.DefaultPeopleDetector);
+
+            Mat blurMat = new Mat();
+            Size ksize = new Size(0, 0);
+            Imgproc.GaussianBlur(imgMat, blurMat, ksize, 3);
+            Core.AddWeighted(imgMat, 1.5, blurMat, -0.5, 0, imgMat);
+
+            MatOfDouble weights = new MatOfDouble();
+            Mat img = new Mat(imgMat.Height(), imgMat.Width(), CvType.Cv8u);
+            Imgproc.CvtColor(imgMat, img, Imgproc.ColorBgra2gray);
+
+            hog.DetectMultiScale(img, rects, weights);
+            weights.Release();
+
+            // If Pedestrian is in collision range
+            Rect[] rectArr = rects.ToArray();
+            foreach (Rect r in rectArr)
+            {
+                Org.Opencv.Core.Point tl = r.Tl(); // Top left corner
+                Org.Opencv.Core.Point br = r.Br(); // Top right corner
+
+                if ((tl.X > 70 || br.X < 170) && br.Y < 120)
+                {
+                    return true;
+                }
+
+            }
+            return false;
+
+        }
+
+        private static void findColorRange(Mat hsvImg)
+        {
+            //Only look at bottom half of the image
+            Mat lowerHalf = hsvImg.Submat(hsvImg.Rows() / 2, hsvImg.Rows(), 0, hsvImg.Cols());
+            Mat hist = new Mat(); // Histogram
+            MatOfFloat ranges = new MatOfFloat(0f, 180f); // bins for hue values
+            MatOfInt histSize = new MatOfInt(180); //More bins
+
+            //https://docs.opencv.org/master/d8/dbc/tutorial_histogram_calculation.html
+            Imgproc.CalcHist(new List<Mat> { lowerHalf }, new MatOfInt(0), new Mat(), hist, histSize, ranges);
+            Core.MinMaxLocResult result = Core.MinMaxLoc(hist);
+            int hue = (int)result.MaxLoc.Y;
+
+            //Take a range of 30 hue values
+            if (hue + 15 < 180 && hue - 15 > 0)
+            {
+                scalars[0] = new Scalar(hue - 15, 50, 20);
+                scalars[1] = new Scalar(hue + 15, 255, 255);
+
+                scalars[2] = new Scalar(0, 50, 20);
+                scalars[3] = new Scalar(180, 255, 255);
+
+            }
+            else if (hue + 15 > 180)
+            {
+                scalars[0] = new Scalar(hue - 15, 50, 20);
+                scalars[1] = new Scalar(180, 255, 255);
+
+                scalars[2] = new Scalar(0, 50, 20);
+                scalars[3] = new Scalar(hue + 15 - 180, 255, 255);
+            }
+            else // hue - 15 < 0
+            {
+                scalars[0] = new Scalar(0, 50, 20);
+                scalars[1] = new Scalar(hue + 15, 255, 255);
+
+                scalars[2] = new Scalar(180 + hue - 15, 50, 20);
+                scalars[3] = new Scalar(180, 255, 255);
+            }
+
+
+            lowerHalf.Release();
+            hist.Release();
+            ranges.Release();
+            histSize.Release();
+
+        }
+
         private static Mat DetectColor(Mat img)
         {
             // create two different masks
@@ -1046,10 +1148,17 @@ namespace CustomVision //name of our app
             Mat hsvImg = new Mat(); // convert the image from RGB to HSV (note that OpenCV HSV values are different than general HSV)
             Imgproc.CvtColor(img, hsvImg, Imgproc.ColorRgb2hsv, 0);
 
-            // create the range of color for the two masks
-            Core.InRange(hsvImg, new Scalar(0, 50, 20), new Scalar(10, 255, 255), mask1);
-            Core.InRange(hsvImg, new Scalar(160, 50, 20), new Scalar(180, 255, 255), mask2);
+            if (!colorFound)
+            {
+                findColorRange(hsvImg);
+                colorFound = true;
+            }
 
+
+            // create the range of color for the two masks
+            Core.InRange(hsvImg, scalars[0], scalars[1], mask1);
+            Core.InRange(hsvImg, scalars[2], scalars[3], mask2);
+ 
             Mat output = new Mat();
             Core.Bitwise_or(mask1, mask2, mask1); // combine the two masks and save it into mask1
             Core.Bitwise_and(img, img, output, mask1); // return the image after only keeping what is in the mask 
